@@ -78,3 +78,5 @@ core
 #		Edit the following section as needed
 # For example, !report.pc overrides *.pc. See 'man gitignore'
 #
+tools/vc4_dump_to_clif
+tools/vc4_dump_hang_state
