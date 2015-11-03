@@ -22,5 +22,7 @@
 SUBDIRS = tools
 
 noinst_HEADERS = \
+	include/vc4_packet.h \
+	include/vc4_tools.h \
 	include/drm/vc4_drm.h \
 	$()

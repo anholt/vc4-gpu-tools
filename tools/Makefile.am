@@ -19,7 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-AM_CPPFLAGS = -I$(top_srcdir)/include/drm
+AM_CPPFLAGS = -I$(top_srcdir)/include/drm -I$(top_srcdir)/include
 AM_CFLAGS = $(LIBDRM_CFLAGS)
 
 if HAVE_SIMPENROSE
@@ -31,7 +31,14 @@ endif
 bin_PROGRAMS = \
 	$(SIMPENROSE_PROGS) \
 	vc4_dump_hang_state \
+	vc4_dump_parse \
 	$()
 
 vc4_dump_hang_state_LDADD = $(LIBDRM_LIBS)
 vc4_dump_to_clif_LDFLAGS = $(SIMPENROSE_LIBS)
+
+vc4_dump_parse_SOURCES = \
+	vc4_dump_parse.c \
+	vc4_dump_parse.h \
+	vc4_dump_parse_cl.c \
+	$()
