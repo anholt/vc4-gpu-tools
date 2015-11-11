@@ -25,6 +25,11 @@
 #include "vc4_packet.h"
 #include "vc4_tools.h"
 
+struct cl_dump_state {
+        void *cl;
+        uint32_t offset;
+};
+
 #define dump_VC4_PACKET_LINE_WIDTH dump_float
 #define dump_VC4_PACKET_POINT_SIZE dump_float
 
@@ -40,30 +45,30 @@ static const char * const prim_name[] = {
 
 
 static void
-dump_float(void *cl, uint32_t offset)
+dump_float(struct cl_dump_state *state)
 {
         printf("0x%08x:      %f (0x%08x)\n",
-               offset, *(float *)cl, *(uint32_t *)cl);
+               state->offset, *(float *)state->cl, *(uint32_t *)state->cl);
 }
 
 static void
-dump_VC4_PACKET_BRANCH_TO_SUB_LIST(void *cl, uint32_t offset)
+dump_VC4_PACKET_BRANCH_TO_SUB_LIST(struct cl_dump_state *state)
 {
-        uint32_t *addr = cl;
+        uint32_t *addr = state->cl;
 
         printf("0x%08x:      addr 0x%08x\n",
-               offset, *addr);
+               state->offset, *addr);
 
         vc4_parse_add_mem_area(VC4_MEM_AREA_SUB_LIST, *addr);
 }
 
 static void
-dump_loadstore_full(void *cl, uint32_t offset)
+dump_loadstore_full(struct cl_dump_state *state)
 {
-        uint32_t bits = *(uint32_t *)cl;
+        uint32_t bits = *(uint32_t *)state->cl;
 
         printf("0x%08x:      addr 0x%08x%s%s%s%s\n",
-               offset,
+               state->offset,
                bits & ~0xf,
                (bits & VC4_LOADSTORE_FULL_RES_DISABLE_CLEAR_ALL) ? "" : " clear",
                (bits & VC4_LOADSTORE_FULL_RES_DISABLE_ZS) ? "" : " zs",
@@ -72,22 +77,22 @@ dump_loadstore_full(void *cl, uint32_t offset)
 }
 
 static void
-dump_VC4_PACKET_LOAD_FULL_RES_TILE_BUFFER(void *cl, uint32_t offset)
+dump_VC4_PACKET_LOAD_FULL_RES_TILE_BUFFER(struct cl_dump_state *state)
 {
-        dump_loadstore_full(cl, offset);
+        dump_loadstore_full(state);
 }
 
 static void
-dump_VC4_PACKET_STORE_FULL_RES_TILE_BUFFER(void *cl, uint32_t offset)
+dump_VC4_PACKET_STORE_FULL_RES_TILE_BUFFER(struct cl_dump_state *state)
 {
-        dump_loadstore_full(cl, offset);
+        dump_loadstore_full(state);
 }
 
 static void
-dump_loadstore_general(void *cl, uint32_t offset)
+dump_loadstore_general(struct cl_dump_state *state)
 {
-        uint8_t *bytes = cl;
-        uint32_t *addr = cl + 2;
+        uint8_t *bytes = state->cl;
+        uint32_t *addr = state->cl + 2;
 
         const char *fullvg = "";
         const char *fullzs = "";
@@ -148,70 +153,70 @@ dump_loadstore_general(void *cl, uint32_t offset)
         }
 
         printf("0x%08x: 0x%02x %s %s\n",
-               offset + 0, bytes[0],
+               state->offset + 0, bytes[0],
                buffer, tiling);
 
         printf("0x%08x: 0x%02x %s\n",
-               offset + 1, bytes[1],
+               state->offset + 1, bytes[1],
                format);
 
         printf("0x%08x:      addr 0x%08x %s%s%s%s\n",
-               offset + 2, *addr & ~15,
+               state->offset + 2, *addr & ~15,
                fullcolor, fullzs, fullvg,
                (*addr & (1 << 3)) ? " EOF" : "");
 }
 
 static void
-dump_VC4_PACKET_STORE_TILE_BUFFER_GENERAL(void *cl, uint32_t offset)
+dump_VC4_PACKET_STORE_TILE_BUFFER_GENERAL(struct cl_dump_state *state)
 {
-        dump_loadstore_general(cl, offset);
+        dump_loadstore_general(state);
 }
 
 static void
-dump_VC4_PACKET_LOAD_TILE_BUFFER_GENERAL(void *cl, uint32_t offset)
+dump_VC4_PACKET_LOAD_TILE_BUFFER_GENERAL(struct cl_dump_state *state)
 {
-        dump_loadstore_general(cl, offset);
+        dump_loadstore_general(state);
 }
 
 static void
-dump_VC4_PACKET_GL_INDEXED_PRIMITIVE(void *cl, uint32_t offset)
+dump_VC4_PACKET_GL_INDEXED_PRIMITIVE(struct cl_dump_state *state)
 {
-        uint8_t *b = cl;
-        uint32_t *count = cl + 1;
-        uint32_t *ib_offset = cl + 5;
-        uint32_t *max_index = cl + 9;
+        uint8_t *b = state->cl;
+        uint32_t *count = state->cl + 1;
+        uint32_t *ib_offset = state->cl + 5;
+        uint32_t *max_index = state->cl + 9;
 
         printf("0x%08x:      0x%02x %s %s\n",
-               offset,
+               state->offset,
                b[0], (b[0] & VC4_INDEX_BUFFER_U16) ? "16-bit" : "8-bit",
                prim_name[b[0] & 0x7]);
         printf("0x%08x:           %d verts\n",
-               offset + 1, *count);
+               state->offset + 1, *count);
         printf("0x%08x:      0x%08x IB offset\n",
-               offset + 5, *ib_offset);
+               state->offset + 5, *ib_offset);
         printf("0x%08x:      0x%08x max index\n",
-               offset + 9, *max_index);
+               state->offset + 9, *max_index);
 }
 
 static void
-dump_VC4_PACKET_GL_ARRAY_PRIMITIVE(void *cl, uint32_t offset)
+dump_VC4_PACKET_GL_ARRAY_PRIMITIVE(struct cl_dump_state *state)
 {
-        uint8_t *b = cl;
-        uint32_t *count = cl + 1;
-        uint32_t *start = cl + 5;
+        uint8_t *b = state->cl;
+        uint32_t *count = state->cl + 1;
+        uint32_t *start = state->cl + 5;
 
         printf("0x%08x:      0x%02x %s\n",
-               offset, b[0], prim_name[b[0] & 0x7]);
+               state->offset, b[0], prim_name[b[0] & 0x7]);
         printf("0x%08x:      %d verts\n",
-               offset + 1, *count);
+               state->offset + 1, *count);
         printf("0x%08x:      0x%08x start\n",
-               offset + 5, *start);
+               state->offset + 5, *start);
 }
 
 static void
-dump_VC4_PACKET_GL_SHADER_STATE(void *cl, uint32_t offset)
+dump_VC4_PACKET_GL_SHADER_STATE(struct cl_dump_state *state)
 {
-        uint8_t *addr = cl;
+        uint8_t *addr = state->cl;
         uint32_t paddr = *addr & ~0xf;
         uint8_t attributes = *addr & 7;
         bool extended;
@@ -221,111 +226,111 @@ dump_VC4_PACKET_GL_SHADER_STATE(void *cl, uint32_t offset)
         extended = *addr & (1 << 3);
 
         printf("0x%08x: 0x%08x %d attr count, %s\n",
-               offset, paddr, attributes,
+               state->offset, paddr, attributes,
                extended ? "extended" : "unextended");
 }
 
 static void
-dump_VC4_PACKET_FLAT_SHADE_FLAGS(void *cl, uint32_t offset)
+dump_VC4_PACKET_FLAT_SHADE_FLAGS(struct cl_dump_state *state)
 {
-        uint32_t *bits = cl;
+        uint32_t *bits = state->cl;
 
         printf("0x%08x:      bits 0x%08x\n",
-               offset, *bits);
+               state->offset, *bits);
 }
 
 static void
-dump_VC4_PACKET_CLIP_WINDOW(void *cl, uint32_t offset)
+dump_VC4_PACKET_CLIP_WINDOW(struct cl_dump_state *state)
 {
-        uint16_t *o = cl;
+        uint16_t *o = state->cl;
 
         printf("0x%08x:      %d, %d (b,l)\n",
-               offset, o[0], o[1]);
+               state->offset, o[0], o[1]);
         printf("0x%08x:      %d, %d (w,h)\n",
-               offset + 2, o[2], o[3]);
+               state->offset + 2, o[2], o[3]);
 }
 
 static void
-dump_VC4_PACKET_VIEWPORT_OFFSET(void *cl, uint32_t offset)
+dump_VC4_PACKET_VIEWPORT_OFFSET(struct cl_dump_state *state)
 {
-        uint16_t *o = cl;
+        uint16_t *o = state->cl;
 
         printf("0x%08x:      %f, %f (0x%04x, 0x%04x)\n",
-               offset,
+               state->offset,
                o[0] / 16.0, o[1] / 16.0,
                o[0], o[1]);
 }
 
 static void
-dump_VC4_PACKET_CLIPPER_XY_SCALING(void *cl, uint32_t offset)
+dump_VC4_PACKET_CLIPPER_XY_SCALING(struct cl_dump_state *state)
 {
-        uint32_t *scale = cl;
+        uint32_t *scale = state->cl;
 
         printf("0x%08x:      %f, %f (%f, %f, 0x%08x, 0x%08x)\n",
-               offset,
+               state->offset,
                uif(scale[0]) / 16.0, uif(scale[1]) / 16.0,
                uif(scale[0]), uif(scale[1]),
                scale[0], scale[1]);
 }
 
 static void
-dump_VC4_PACKET_CLIPPER_Z_SCALING(void *cl, uint32_t offset)
+dump_VC4_PACKET_CLIPPER_Z_SCALING(struct cl_dump_state *state)
 {
-        uint32_t *translate = cl;
-        uint32_t *scale = cl + 8;
+        uint32_t *translate = state->cl;
+        uint32_t *scale = state->cl + 8;
 
         printf("0x%08x:      %f, %f (0x%08x, 0x%08x)\n",
-               offset,
+               state->offset,
                uif(translate[0]), uif(translate[1]),
                translate[0], translate[1]);
 
         printf("0x%08x:      %f, %f (0x%08x, 0x%08x)\n",
-               offset + 8,
+               state->offset + 8,
                uif(scale[0]), uif(scale[1]),
                scale[0], scale[1]);
 }
 
 static void
-dump_VC4_PACKET_TILE_BINNING_MODE_CONFIG(void *cl, uint32_t offset)
+dump_VC4_PACKET_TILE_BINNING_MODE_CONFIG(struct cl_dump_state *state)
 {
-        uint32_t *tile_alloc_addr = cl;
-        uint32_t *tile_alloc_size = cl + 4;
-        uint32_t *tile_state_addr = cl + 8;
-        uint8_t *bin_x = cl + 12;
-        uint8_t *bin_y = cl + 13;
-        uint8_t *flags = cl + 14;
+        uint32_t *tile_alloc_addr = state->cl;
+        uint32_t *tile_alloc_size = state->cl + 4;
+        uint32_t *tile_state_addr = state->cl + 8;
+        uint8_t *bin_x = state->cl + 12;
+        uint8_t *bin_y = state->cl + 13;
+        uint8_t *flags = state->cl + 14;
 
         printf("0x%08x:       tile alloc addr 0x%08x\n",
-               offset, *tile_alloc_addr);
+               state->offset, *tile_alloc_addr);
 
         printf("0x%08x:       tile alloc size %db\n",
-               offset + 4, *tile_alloc_size);
+               state->offset + 4, *tile_alloc_size);
 
         printf("0x%08x:       tile state addr 0x%08x\n",
-               offset + 8, *tile_state_addr);
+               state->offset + 8, *tile_state_addr);
 
         printf("0x%08x:       tiles (%d, %d)\n",
-               offset + 12, *bin_x, *bin_y);
+               state->offset + 12, *bin_x, *bin_y);
 
         printf("0x%08x:       flags 0x%02x\n",
-               offset + 14, *flags);
+               state->offset + 14, *flags);
 }
 
 static void
-dump_VC4_PACKET_TILE_RENDERING_MODE_CONFIG(void *cl, uint32_t offset)
+dump_VC4_PACKET_TILE_RENDERING_MODE_CONFIG(struct cl_dump_state *state)
 {
-        uint32_t *render_offset = cl;
-        uint16_t *shorts = cl + 4;
-        uint8_t *bytes = cl + 8;
+        uint32_t *render_offset = state->cl;
+        uint16_t *shorts = state->cl + 4;
+        uint8_t *bytes = state->cl + 8;
 
         printf("0x%08x:       color offset 0x%08x\n",
-               offset, *render_offset);
+               state->offset, *render_offset);
 
         printf("0x%08x:       width %d\n",
-               offset + 4, shorts[0]);
+               state->offset + 4, shorts[0]);
 
         printf("0x%08x:       height %d\n",
-               offset + 6, shorts[1]);
+               state->offset + 6, shorts[1]);
 
         const char *format = "???";
         switch (VC4_GET_FIELD(shorts[2], VC4_RENDER_CONFIG_FORMAT)) {
@@ -356,7 +361,7 @@ dump_VC4_PACKET_TILE_RENDERING_MODE_CONFIG(void *cl, uint32_t offset)
         }
 
         printf("0x%08x: 0x%02x %s %s %s %s\n",
-               offset + 8,
+               state->offset + 8,
                bytes[0],
                format, tiling,
                (shorts[2] & VC4_RENDER_CONFIG_MS_MODE_4X) ? "ms" : "ss",
@@ -374,43 +379,43 @@ dump_VC4_PACKET_TILE_RENDERING_MODE_CONFIG(void *cl, uint32_t offset)
         }
 
         printf("0x%08x: 0x%02x %s\n",
-               offset + 9,
+               state->offset + 9,
                bytes[1],
                earlyz);
 }
 
 static void
-dump_VC4_PACKET_CLEAR_COLORS(void *cl, uint32_t offset)
+dump_VC4_PACKET_CLEAR_COLORS(struct cl_dump_state *state)
 {
-        uint32_t *colors = cl;
-        uint8_t *s = cl + 12;
+        uint32_t *colors = state->cl;
+        uint8_t *s = state->cl + 12;
 
         printf("0x%08x:      0x%08x rgba8888[0]\n",
-               offset, colors[0]);
+               state->offset, colors[0]);
         printf("0x%08x:      0x%08x rgba8888[1]\n",
-               offset, colors[1]);
+               state->offset, colors[1]);
         printf("0x%08x:      0x%08x zs\n",
-               offset, colors[2]);
+               state->offset, colors[2]);
         printf("0x%08x:      0x%02x stencil\n",
-               offset, *s);
+               state->offset, *s);
 }
 
 static void
-dump_VC4_PACKET_TILE_COORDINATES(void *cl, uint32_t offset)
+dump_VC4_PACKET_TILE_COORDINATES(struct cl_dump_state *state)
 {
-        uint8_t *tilecoords = cl;
+        uint8_t *tilecoords = state->cl;
 
         printf("0x%08x:      %d, %d\n",
-               offset, tilecoords[0], tilecoords[1]);
+               state->offset, tilecoords[0], tilecoords[1]);
 }
 
 static void
-dump_VC4_PACKET_GEM_HANDLES(void *cl, uint32_t offset)
+dump_VC4_PACKET_GEM_HANDLES(struct cl_dump_state *state)
 {
-        uint32_t *handles = cl;
+        uint32_t *handles = state->cl;
 
         printf("0x%08x:      handle 0: %d, handle 1: %d\n",
-               offset, handles[0], handles[1]);
+               state->offset, handles[0], handles[1]);
 }
 
 #define PACKET_DUMP(name) [name] = { #name, name ## _SIZE, dump_##name }
@@ -419,7 +424,7 @@ dump_VC4_PACKET_GEM_HANDLES(void *cl, uint32_t offset)
 static const struct packet_info {
         const char *name;
         uint8_t size;
-        void (*dump_func)(void *cl, uint32_t offset);
+        void (*dump_func)(struct cl_dump_state *state);
 } packet_info[] = {
         PACKET(VC4_PACKET_HALT),
         PACKET(VC4_PACKET_NOP),
@@ -477,6 +482,7 @@ vc4_dump_cl(uint32_t start, uint32_t end, bool is_render)
 {
         uint32_t offset = start;
         uint8_t *cmds = vc4_paddr_to_pointer(start);
+        struct cl_dump_state state;
 
         while (offset < end) {
                 uint8_t header = *cmds;
@@ -495,7 +501,9 @@ vc4_dump_cl(uint32_t start, uint32_t end, bool is_render)
 
                 if (offset + p->size <= end &&
                     p->dump_func) {
-                        p->dump_func(cmds + 1, offset + 1);
+                        state.cl = cmds + 1;
+                        state.offset = offset + 1;
+                        p->dump_func(&state);
                 } else {
                         for (uint32_t i = 1; i < p->size; i++) {
                                 if (offset + i >= end) {
