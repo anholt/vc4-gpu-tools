@@ -209,12 +209,40 @@ dump_VC4_PACKET_GL_ARRAY_PRIMITIVE(void *cl, uint32_t offset)
 }
 
 static void
+dump_VC4_PACKET_GL_SHADER_STATE(void *cl, uint32_t offset)
+{
+        uint8_t *addr = cl;
+        uint32_t paddr = *addr & ~0xf;
+        uint8_t attributes = *addr & 7;
+        bool extended;
+
+        if (attributes == 0)
+                attributes = 8;
+        extended = *addr & (1 << 3);
+
+        printf("0x%08x: 0x%08x %d attr count, %s\n",
+               offset, paddr, attributes,
+               extended ? "extended" : "unextended");
+}
+
+static void
 dump_VC4_PACKET_FLAT_SHADE_FLAGS(void *cl, uint32_t offset)
 {
         uint32_t *bits = cl;
 
         printf("0x%08x:      bits 0x%08x\n",
                offset, *bits);
+}
+
+static void
+dump_VC4_PACKET_CLIP_WINDOW(void *cl, uint32_t offset)
+{
+        uint16_t *o = cl;
+
+        printf("0x%08x:      %d, %d (b,l)\n",
+               offset, o[0], o[1]);
+        printf("0x%08x:      %d, %d (w,h)\n",
+               offset + 2, o[2], o[3]);
 }
 
 static void
@@ -352,6 +380,22 @@ dump_VC4_PACKET_TILE_RENDERING_MODE_CONFIG(void *cl, uint32_t offset)
 }
 
 static void
+dump_VC4_PACKET_CLEAR_COLORS(void *cl, uint32_t offset)
+{
+        uint32_t *colors = cl;
+        uint8_t *s = cl + 12;
+
+        printf("0x%08x:      0x%08x rgba8888[0]\n",
+               offset, colors[0]);
+        printf("0x%08x:      0x%08x rgba8888[1]\n",
+               offset, colors[1]);
+        printf("0x%08x:      0x%08x zs\n",
+               offset, colors[2]);
+        printf("0x%08x:      0x%02x stencil\n",
+               offset, *s);
+}
+
+static void
 dump_VC4_PACKET_TILE_COORDINATES(void *cl, uint32_t offset)
 {
         uint8_t *tilecoords = cl;
@@ -404,7 +448,7 @@ static const struct packet_info {
 
         PACKET(VC4_PACKET_PRIMITIVE_LIST_FORMAT),
 
-        PACKET(VC4_PACKET_GL_SHADER_STATE),
+        PACKET_DUMP(VC4_PACKET_GL_SHADER_STATE),
         PACKET(VC4_PACKET_NV_SHADER_STATE),
         PACKET(VC4_PACKET_VG_SHADER_STATE),
 
@@ -414,7 +458,7 @@ static const struct packet_info {
         PACKET_DUMP(VC4_PACKET_LINE_WIDTH),
         PACKET(VC4_PACKET_RHT_X_BOUNDARY),
         PACKET(VC4_PACKET_DEPTH_OFFSET),
-        PACKET(VC4_PACKET_CLIP_WINDOW),
+        PACKET_DUMP(VC4_PACKET_CLIP_WINDOW),
         PACKET_DUMP(VC4_PACKET_VIEWPORT_OFFSET),
         PACKET(VC4_PACKET_Z_CLIPPING),
         PACKET_DUMP(VC4_PACKET_CLIPPER_XY_SCALING),
@@ -422,7 +466,7 @@ static const struct packet_info {
 
         PACKET_DUMP(VC4_PACKET_TILE_BINNING_MODE_CONFIG),
         PACKET_DUMP(VC4_PACKET_TILE_RENDERING_MODE_CONFIG),
-        PACKET(VC4_PACKET_CLEAR_COLORS),
+        PACKET_DUMP(VC4_PACKET_CLEAR_COLORS),
         PACKET_DUMP(VC4_PACKET_TILE_COORDINATES),
 
         PACKET_DUMP(VC4_PACKET_GEM_HANDLES),
