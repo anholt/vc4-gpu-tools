@@ -53,6 +53,8 @@ dump_VC4_PACKET_BRANCH_TO_SUB_LIST(void *cl, uint32_t offset)
 
         printf("0x%08x:      addr 0x%08x\n",
                offset, *addr);
+
+        vc4_parse_add_mem_area(VC4_MEM_AREA_SUB_LIST, *addr);
 }
 
 static void

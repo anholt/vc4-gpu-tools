@@ -35,6 +35,7 @@
 #include <sys/types.h>
 #include "vc4_drm.h"
 
+#include "list.h"
 #include "vc4_dump_parse.h"
 
 static void *
@@ -60,10 +61,21 @@ map_input(const char *filename)
         return map;
 }
 
+struct vc4_mem_area_rec {
+        struct list_head link;
+
+        enum vc4_mem_area_type type;
+        void *addr;
+        uint32_t paddr;
+        uint32_t size;
+};
+
 static struct {
         struct drm_vc4_get_hang_state *state;
         struct drm_vc4_get_hang_state_bo *bo_state;
         void **map;
+
+        struct list_head mem_areas;
 } dump;
 
 static void
@@ -110,6 +122,44 @@ vc4_pointer_to_paddr(void *p)
         return NULL;
 }
 
+static uint32_t
+vc4_get_end_paddr(uint32_t paddr)
+{
+        for (int i = 0; i < dump.state->bo_count; i++) {
+                uint32_t start = dump.bo_state[i].paddr;
+                uint32_t end = start + dump.bo_state[i].size;
+                if (paddr >= start && paddr < end)
+                        return end;
+        }
+
+        fprintf(stderr, "Couldn't translate paddr 0x%08x\n", paddr);
+        dump_bo_list();
+
+        return NULL;
+}
+
+void
+vc4_parse_add_mem_area_sized(enum vc4_mem_area_type type, uint32_t paddr,
+                             uint32_t size)
+{
+        struct vc4_mem_area_rec *rec;
+
+        rec = calloc(1, sizeof(*rec));
+        rec->type = type;
+        rec->paddr = paddr;
+        rec->addr = vc4_paddr_to_pointer(paddr);
+        rec->size = size;
+
+        list_add(&rec->link, &dump.mem_areas);
+}
+
+void
+vc4_parse_add_mem_area(enum vc4_mem_area_type type, uint32_t paddr)
+{
+        uint32_t end_paddr = vc4_get_end_paddr(paddr);
+        vc4_parse_add_mem_area_sized(type, paddr, end_paddr - paddr);
+}
+
 static void
 parse_input(void *input)
 {
@@ -146,6 +196,17 @@ parse_cls(void)
 }
 
 static void
+parse_sublists(void)
+{
+        list_for_each_entry(struct vc4_mem_area_rec, rec, &dump.mem_areas,
+                            link) {
+                printf("Sublist at 0x%08x:\n", rec->paddr);
+                vc4_dump_cl(rec->paddr, rec->paddr + rec->size, true);
+                printf("\n");
+        }
+}
+
+static void
 usage(const char *name)
 {
         fprintf(stderr, "Usage: %s input.dump\n", name);
@@ -157,12 +218,15 @@ main(int argc, char **argv)
 {
         void *input;
 
+        list_inithead(&dump.mem_areas);
+
         if (argc != 2)
                 usage(argv[0]);
 
         input = map_input(argv[1]);
         parse_input(input);
         parse_cls();
+        parse_sublists();
 
         return 0;
 }
