@@ -22,6 +22,7 @@
 SUBDIRS = tests tools
 
 noinst_HEADERS = \
+	include/list.h \
 	include/vc4_packet.h \
 	include/vc4_qpu_defines.h \
 	include/vc4_tools.h \
