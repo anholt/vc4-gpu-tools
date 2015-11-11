@@ -28,6 +28,16 @@
 #define dump_VC4_PACKET_LINE_WIDTH dump_float
 #define dump_VC4_PACKET_POINT_SIZE dump_float
 
+static const char * const prim_name[] = {
+        "points",
+        "lines",
+        "line_loop",
+        "line_strip",
+        "triangles",
+        "triangle_strip",
+        "triangle_fan"
+};
+
 
 static void
 dump_float(void *cl, uint32_t offset)
@@ -46,7 +56,33 @@ dump_VC4_PACKET_BRANCH_TO_SUB_LIST(void *cl, uint32_t offset)
 }
 
 static void
-dump_VC4_PACKET_STORE_TILE_BUFFER_GENERAL(void *cl, uint32_t offset)
+dump_loadstore_full(void *cl, uint32_t offset)
+{
+        uint32_t bits = *(uint32_t *)cl;
+
+        printf("0x%08x:      addr 0x%08x%s%s%s%s\n",
+               offset,
+               bits & ~0xf,
+               (bits & VC4_LOADSTORE_FULL_RES_DISABLE_CLEAR_ALL) ? "" : " clear",
+               (bits & VC4_LOADSTORE_FULL_RES_DISABLE_ZS) ? "" : " zs",
+               (bits & VC4_LOADSTORE_FULL_RES_DISABLE_COLOR) ? "" : " color",
+               (bits & VC4_LOADSTORE_FULL_RES_EOF) ? " eof" : "");
+}
+
+static void
+dump_VC4_PACKET_LOAD_FULL_RES_TILE_BUFFER(void *cl, uint32_t offset)
+{
+        dump_loadstore_full(cl, offset);
+}
+
+static void
+dump_VC4_PACKET_STORE_FULL_RES_TILE_BUFFER(void *cl, uint32_t offset)
+{
+        dump_loadstore_full(cl, offset);
+}
+
+static void
+dump_loadstore_general(void *cl, uint32_t offset)
 {
         uint8_t *bytes = cl;
         uint32_t *addr = cl + 2;
@@ -124,6 +160,53 @@ dump_VC4_PACKET_STORE_TILE_BUFFER_GENERAL(void *cl, uint32_t offset)
 }
 
 static void
+dump_VC4_PACKET_STORE_TILE_BUFFER_GENERAL(void *cl, uint32_t offset)
+{
+        dump_loadstore_general(cl, offset);
+}
+
+static void
+dump_VC4_PACKET_LOAD_TILE_BUFFER_GENERAL(void *cl, uint32_t offset)
+{
+        dump_loadstore_general(cl, offset);
+}
+
+static void
+dump_VC4_PACKET_GL_INDEXED_PRIMITIVE(void *cl, uint32_t offset)
+{
+        uint8_t *b = cl;
+        uint32_t *count = cl + 1;
+        uint32_t *ib_offset = cl + 5;
+        uint32_t *max_index = cl + 9;
+
+        printf("0x%08x:      0x%02x %s %s\n",
+               offset,
+               b[0], (b[0] & VC4_INDEX_BUFFER_U16) ? "16-bit" : "8-bit",
+               prim_name[b[0] & 0x7]);
+        printf("0x%08x:           %d verts\n",
+               offset + 1, *count);
+        printf("0x%08x:      0x%08x IB offset\n",
+               offset + 5, *ib_offset);
+        printf("0x%08x:      0x%08x max index\n",
+               offset + 9, *max_index);
+}
+
+static void
+dump_VC4_PACKET_GL_ARRAY_PRIMITIVE(void *cl, uint32_t offset)
+{
+        uint8_t *b = cl;
+        uint32_t *count = cl + 1;
+        uint32_t *start = cl + 5;
+
+        printf("0x%08x:      0x%02x %s\n",
+               offset, b[0], prim_name[b[0] & 0x7]);
+        printf("0x%08x:      %d verts\n",
+               offset + 1, *count);
+        printf("0x%08x:      0x%08x start\n",
+               offset + 5, *start);
+}
+
+static void
 dump_VC4_PACKET_FLAT_SHADE_FLAGS(void *cl, uint32_t offset)
 {
         uint32_t *bits = cl;
@@ -173,6 +256,32 @@ dump_VC4_PACKET_CLIPPER_Z_SCALING(void *cl, uint32_t offset)
 }
 
 static void
+dump_VC4_PACKET_TILE_BINNING_MODE_CONFIG(void *cl, uint32_t offset)
+{
+        uint32_t *tile_alloc_addr = cl;
+        uint32_t *tile_alloc_size = cl + 4;
+        uint32_t *tile_state_addr = cl + 8;
+        uint8_t *bin_x = cl + 12;
+        uint8_t *bin_y = cl + 13;
+        uint8_t *flags = cl + 14;
+
+        printf("0x%08x:       tile alloc addr 0x%08x\n",
+               offset, *tile_alloc_addr);
+
+        printf("0x%08x:       tile alloc size %db\n",
+               offset + 4, *tile_alloc_size);
+
+        printf("0x%08x:       tile state addr 0x%08x\n",
+               offset + 8, *tile_state_addr);
+
+        printf("0x%08x:       tiles (%d, %d)\n",
+               offset + 12, *bin_x, *bin_y);
+
+        printf("0x%08x:       flags 0x%02x\n",
+               offset + 14, *flags);
+}
+
+static void
 dump_VC4_PACKET_TILE_RENDERING_MODE_CONFIG(void *cl, uint32_t offset)
 {
         uint32_t *render_offset = cl;
@@ -180,26 +289,23 @@ dump_VC4_PACKET_TILE_RENDERING_MODE_CONFIG(void *cl, uint32_t offset)
         uint8_t *bytes = cl + 8;
 
         printf("0x%08x:       color offset 0x%08x\n",
-               offset,
-               *render_offset);
+               offset, *render_offset);
 
         printf("0x%08x:       width %d\n",
-               offset + 4,
-               shorts[0]);
+               offset + 4, shorts[0]);
 
         printf("0x%08x:       height %d\n",
-               offset + 6,
-               shorts[1]);
+               offset + 6, shorts[1]);
 
         const char *format = "???";
-        switch ((bytes[0] >> 2) & 3) {
-        case 0:
+        switch (VC4_GET_FIELD(shorts[2], VC4_RENDER_CONFIG_FORMAT)) {
+        case VC4_RENDER_CONFIG_FORMAT_BGR565_DITHERED:
                 format = "BGR565_DITHERED";
                 break;
-        case 1:
+        case VC4_RENDER_CONFIG_FORMAT_RGBA8888:
                 format = "RGBA8888";
                 break;
-        case 2:
+        case VC4_RENDER_CONFIG_FORMAT_BGR565:
                 format = "BGR565";
                 break;
         }
@@ -207,29 +313,31 @@ dump_VC4_PACKET_TILE_RENDERING_MODE_CONFIG(void *cl, uint32_t offset)
                 format = "64bit";
 
         const char *tiling = "???";
-        switch ((bytes[0] >> 6) & 3) {
-        case 0:
+        switch (VC4_GET_FIELD(shorts[2], VC4_RENDER_CONFIG_MEMORY_FORMAT)) {
+        case VC4_TILING_FORMAT_LINEAR:
                 tiling = "linear";
                 break;
-        case 1:
+        case VC4_TILING_FORMAT_T:
                 tiling = "T";
                 break;
-        case 2:
+        case VC4_TILING_FORMAT_LT:
                 tiling = "LT";
                 break;
         }
 
-        printf("0x%08x: 0x%02x %s %s %s\n",
+        printf("0x%08x: 0x%02x %s %s %s %s\n",
                offset + 8,
                bytes[0],
                format, tiling,
-               (bytes[0] & VC4_RENDER_CONFIG_MS_MODE_4X) ? "ms" : "ss");
+               (shorts[2] & VC4_RENDER_CONFIG_MS_MODE_4X) ? "ms" : "ss",
+               (shorts[2] & VC4_RENDER_CONFIG_DECIMATE_MODE_4X) ?
+               "ms_decimate" : "ss_decimate");
 
         const char *earlyz = "";
-        if (bytes[1] & (1 << 3)) {
+        if (shorts[2] & VC4_RENDER_CONFIG_EARLY_Z_COVERAGE_DISABLE) {
                 earlyz = "early_z disabled";
         } else {
-                if (bytes[1] & (1 << 2))
+                if (shorts[2] & VC4_RENDER_CONFIG_EARLY_Z_DIRECTION_G)
                         earlyz = "early_z >";
                 else
                         earlyz = "early_z <";
@@ -250,61 +358,72 @@ dump_VC4_PACKET_TILE_COORDINATES(void *cl, uint32_t offset)
                offset, tilecoords[0], tilecoords[1]);
 }
 
-#define PACKET_DUMP(name, size) [name] = { #name, size, dump_##name }
-#define PACKET(name, size) [name] = { #name, size, NULL }
+static void
+dump_VC4_PACKET_GEM_HANDLES(void *cl, uint32_t offset)
+{
+        uint32_t *handles = cl;
+
+        printf("0x%08x:      handle 0: %d, handle 1: %d\n",
+               offset, handles[0], handles[1]);
+}
+
+#define PACKET_DUMP(name) [name] = { #name, name ## _SIZE, dump_##name }
+#define PACKET(name) [name] = { #name, name ## _SIZE, NULL }
 
 static const struct packet_info {
         const char *name;
         uint8_t size;
         void (*dump_func)(void *cl, uint32_t offset);
 } packet_info[] = {
-        PACKET(VC4_PACKET_HALT, 1),
-        PACKET(VC4_PACKET_NOP, 1),
+        PACKET(VC4_PACKET_HALT),
+        PACKET(VC4_PACKET_NOP),
 
-        PACKET(VC4_PACKET_FLUSH, 1),
-        PACKET(VC4_PACKET_FLUSH_ALL, 1),
-        PACKET(VC4_PACKET_START_TILE_BINNING, 1),
-        PACKET(VC4_PACKET_INCREMENT_SEMAPHORE, 1),
-        PACKET(VC4_PACKET_WAIT_ON_SEMAPHORE, 1),
+        PACKET(VC4_PACKET_FLUSH),
+        PACKET(VC4_PACKET_FLUSH_ALL),
+        PACKET(VC4_PACKET_START_TILE_BINNING),
+        PACKET(VC4_PACKET_INCREMENT_SEMAPHORE),
+        PACKET(VC4_PACKET_WAIT_ON_SEMAPHORE),
 
-        PACKET(VC4_PACKET_BRANCH, 5),
-        PACKET_DUMP(VC4_PACKET_BRANCH_TO_SUB_LIST, 5),
+        PACKET(VC4_PACKET_BRANCH),
+        PACKET_DUMP(VC4_PACKET_BRANCH_TO_SUB_LIST),
 
-        PACKET(VC4_PACKET_STORE_MS_TILE_BUFFER, 1),
-        PACKET(VC4_PACKET_STORE_MS_TILE_BUFFER_AND_EOF, 1),
-        PACKET(VC4_PACKET_STORE_FULL_RES_TILE_BUFFER, 5),
-        PACKET(VC4_PACKET_LOAD_FULL_RES_TILE_BUFFER, 5),
-        PACKET_DUMP(VC4_PACKET_STORE_TILE_BUFFER_GENERAL, 7),
-        PACKET(VC4_PACKET_LOAD_TILE_BUFFER_GENERAL, 7),
+        PACKET(VC4_PACKET_STORE_MS_TILE_BUFFER),
+        PACKET(VC4_PACKET_STORE_MS_TILE_BUFFER_AND_EOF),
+        PACKET_DUMP(VC4_PACKET_STORE_FULL_RES_TILE_BUFFER),
+        PACKET_DUMP(VC4_PACKET_LOAD_FULL_RES_TILE_BUFFER),
+        PACKET_DUMP(VC4_PACKET_STORE_TILE_BUFFER_GENERAL),
+        PACKET_DUMP(VC4_PACKET_LOAD_TILE_BUFFER_GENERAL),
 
-        PACKET(VC4_PACKET_GL_INDEXED_PRIMITIVE, 14),
-        PACKET(VC4_PACKET_GL_ARRAY_PRIMITIVE, 10),
+        PACKET_DUMP(VC4_PACKET_GL_INDEXED_PRIMITIVE),
+        PACKET_DUMP(VC4_PACKET_GL_ARRAY_PRIMITIVE),
 
-        PACKET(VC4_PACKET_COMPRESSED_PRIMITIVE, 48),
-        PACKET(VC4_PACKET_CLIPPED_COMPRESSED_PRIMITIVE, 49),
+        PACKET(VC4_PACKET_COMPRESSED_PRIMITIVE),
+        PACKET(VC4_PACKET_CLIPPED_COMPRESSED_PRIMITIVE),
 
-        PACKET(VC4_PACKET_PRIMITIVE_LIST_FORMAT, 2),
+        PACKET(VC4_PACKET_PRIMITIVE_LIST_FORMAT),
 
-        PACKET(VC4_PACKET_GL_SHADER_STATE, 5),
-        PACKET(VC4_PACKET_NV_SHADER_STATE, 5),
-        PACKET(VC4_PACKET_VG_SHADER_STATE, 5),
+        PACKET(VC4_PACKET_GL_SHADER_STATE),
+        PACKET(VC4_PACKET_NV_SHADER_STATE),
+        PACKET(VC4_PACKET_VG_SHADER_STATE),
 
-        PACKET(VC4_PACKET_CONFIGURATION_BITS, 4),
-        PACKET_DUMP(VC4_PACKET_FLAT_SHADE_FLAGS, 5),
-        PACKET_DUMP(VC4_PACKET_POINT_SIZE, 5),
-        PACKET_DUMP(VC4_PACKET_LINE_WIDTH, 5),
-        PACKET(VC4_PACKET_RHT_X_BOUNDARY, 3),
-        PACKET(VC4_PACKET_DEPTH_OFFSET, 5),
-        PACKET(VC4_PACKET_CLIP_WINDOW, 9),
-        PACKET_DUMP(VC4_PACKET_VIEWPORT_OFFSET, 5),
-        PACKET(VC4_PACKET_Z_CLIPPING, 9),
-        PACKET_DUMP(VC4_PACKET_CLIPPER_XY_SCALING, 9),
-        PACKET_DUMP(VC4_PACKET_CLIPPER_Z_SCALING, 9),
+        PACKET(VC4_PACKET_CONFIGURATION_BITS),
+        PACKET_DUMP(VC4_PACKET_FLAT_SHADE_FLAGS),
+        PACKET_DUMP(VC4_PACKET_POINT_SIZE),
+        PACKET_DUMP(VC4_PACKET_LINE_WIDTH),
+        PACKET(VC4_PACKET_RHT_X_BOUNDARY),
+        PACKET(VC4_PACKET_DEPTH_OFFSET),
+        PACKET(VC4_PACKET_CLIP_WINDOW),
+        PACKET_DUMP(VC4_PACKET_VIEWPORT_OFFSET),
+        PACKET(VC4_PACKET_Z_CLIPPING),
+        PACKET_DUMP(VC4_PACKET_CLIPPER_XY_SCALING),
+        PACKET_DUMP(VC4_PACKET_CLIPPER_Z_SCALING),
 
-        PACKET(VC4_PACKET_TILE_BINNING_MODE_CONFIG, 16),
-        PACKET_DUMP(VC4_PACKET_TILE_RENDERING_MODE_CONFIG, 11),
-        PACKET(VC4_PACKET_CLEAR_COLORS, 14),
-        PACKET_DUMP(VC4_PACKET_TILE_COORDINATES, 3),
+        PACKET_DUMP(VC4_PACKET_TILE_BINNING_MODE_CONFIG),
+        PACKET_DUMP(VC4_PACKET_TILE_RENDERING_MODE_CONFIG),
+        PACKET(VC4_PACKET_CLEAR_COLORS),
+        PACKET_DUMP(VC4_PACKET_TILE_COORDINATES),
+
+        PACKET_DUMP(VC4_PACKET_GEM_HANDLES),
 };
 
 void
