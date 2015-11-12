@@ -21,7 +21,7 @@
 
 AC_PREREQ([2.60])
 AC_INIT([vc4-gpu-tools],
-	[1.6],
+	[1.0],
 	[https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],
 	[vc4-gpu-tools])
 
