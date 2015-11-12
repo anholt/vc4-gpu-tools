@@ -37,11 +37,13 @@ libvc4_test_la_SOURCES = \
 	$()
 
 noinst_PROGRAMS = \
+	shader_missing_end \
 	shader_noop \
 	$()
 
 TEST_LIBS = $(LIBDRM_LIBS) libvc4_test.la
 
+shader_missing_end_LDADD = $(TEST_LIBS)
 shader_noop_LDADD = $(TEST_LIBS)
 
 list-tests:
