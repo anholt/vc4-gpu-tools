@@ -36,7 +36,13 @@ libvc4_test_la_SOURCES = \
 	lib/vc4_qpu.h \
 	$()
 
+noinst_PROGRAMS = \
+	shader_noop \
+	$()
+
 TEST_LIBS = $(LIBDRM_LIBS) libvc4_test.la
+
+shader_noop_LDADD = $(TEST_LIBS)
 
 list-tests:
 	@echo $(noinst_PROGRAMS)
