@@ -19,10 +19,23 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-SUBDIRS = tests tools
-
-noinst_HEADERS = \
-	include/vc4_packet.h \
-	include/vc4_tools.h \
-	include/drm/vc4_drm.h \
+AM_CPPFLAGS = \
+	-I$(top_srcdir)/include/drm \
+	-I$(top_srcdir)/include \
+	-I$(srcdir)/lib \
 	$()
+
+AM_CFLAGS = $(LIBDRM_CFLAGS) $(CWARNFLAGS)
+
+noinst_LTLIBRARIES = libvc4_test.la
+
+libvc4_test_la_SOURCES = \
+	lib/vc4_test.c \
+	lib/vc4_test.h \
+	$()
+
+TEST_LIBS = $(LIBDRM_LIBS) libvc4_test.la
+
+list-tests:
+	@echo $(noinst_PROGRAMS)
+

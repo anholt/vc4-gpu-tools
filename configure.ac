@@ -33,7 +33,7 @@ AC_SYS_LARGEFILE
 AC_GNU_SOURCE
 AC_CANONICAL_HOST
 
-AM_INIT_AUTOMAKE([foreign dist-bzip2])
+AM_INIT_AUTOMAKE([foreign dist-bzip2 subdir-objects])
 
 AC_PROG_CC
 
@@ -63,6 +63,7 @@ AM_CONDITIONAL(HAVE_SIMPENROSE, test x$HAVE_SIMPENROSE = xyes)
 
 AC_CONFIG_FILES([
 		 Makefile
+		 tests/Makefile
 		 tools/Makefile
 		 ])
 AC_OUTPUT
