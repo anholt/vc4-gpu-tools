@@ -71,6 +71,7 @@ get_hang_state(int fd, struct hang *hang)
                                 sizeof(struct drm_vc4_get_hang_state_bo));
         if (!hang->bo_state)
                 err(1, "malloc failure");
+        hang->get_state->bo = (uintptr_t)hang->bo_state;
 
 
         ret = ioctl(fd, DRM_IOCTL_VC4_GET_HANG_STATE, hang->get_state);
