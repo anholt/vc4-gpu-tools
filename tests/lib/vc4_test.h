@@ -32,6 +32,7 @@
 #include "xf86drm.h"
 #include "vc4_tools.h"
 #include "vc4_drm.h"
+#include "vc4_qpu.h"
 
 enum vc4_result {
         VC4_RESULT_PASS,

@@ -32,6 +32,8 @@ noinst_LTLIBRARIES = libvc4_test.la
 libvc4_test_la_SOURCES = \
 	lib/vc4_test.c \
 	lib/vc4_test.h \
+	lib/vc4_qpu.c \
+	lib/vc4_qpu.h \
 	$()
 
 TEST_LIBS = $(LIBDRM_LIBS) libvc4_test.la

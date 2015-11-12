@@ -24,6 +24,7 @@
 #include <stdio.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#define ATTRIBUTE_CONST __attribute__((__const__))
 
 static inline float
 uif(uint32_t u)
@@ -35,4 +36,16 @@ uif(uint32_t u)
 
         uf.u = u;
         return uf.f;
+}
+
+static inline uint32_t
+fui(float f)
+{
+        union {
+                uint32_t u;
+                float f;
+        } uf;
+
+        uf.f = f;
+        return uf.u;
 }
