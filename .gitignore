@@ -80,3 +80,4 @@ core
 #
 tools/vc4_dump_to_clif
 tools/vc4_dump_hang_state
+tools/vc4_dump_parse
