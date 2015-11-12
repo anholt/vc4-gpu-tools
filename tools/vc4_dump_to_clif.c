@@ -65,15 +65,14 @@ static struct {
 } dump;
 
 static void
-dump_bo_list()
+dump_bo_list(void)
 {
         fprintf(stderr, "BOs:\n");
 
         for (int i = 0; i < dump.state->bo_count; i++) {
                 uint32_t paddr = dump.bo_state[i].paddr;
                 fprintf(stderr, "0x%08x..0x%08x (%p)\n",
-                        dump.bo_state[i].paddr,
-                        dump.bo_state[i].paddr + dump.bo_state[i].size - 1,
+                        paddr, paddr + dump.bo_state[i].size - 1,
                         dump.map[i]);
         }
 }
