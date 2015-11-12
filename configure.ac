@@ -51,6 +51,10 @@ m4_ifndef([XORG_MACROS_VERSION],
 XORG_MACROS_VERSION(1.16)
 XORG_DEFAULT_OPTIONS
 
+if  test "x$GCC" = xyes ; then
+    CWARNFLAGS="$CWARNFLAGS -fno-strict-aliasing -Wno-pointer-arith -Wno-declaration-after-statement"
+fi
+
 PKG_CHECK_MODULES(LIBDRM, [libdrm])
 
 PKG_CHECK_MODULES([SIMPENROSE], [simpenrose],

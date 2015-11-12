@@ -20,7 +20,7 @@
 # IN THE SOFTWARE.
 
 AM_CPPFLAGS = -I$(top_srcdir)/include/drm -I$(top_srcdir)/include
-AM_CFLAGS = $(LIBDRM_CFLAGS)
+AM_CFLAGS = $(LIBDRM_CFLAGS) $(CWARNFLAGS)
 
 if HAVE_SIMPENROSE
 SIMPENROSE_PROGS = \
