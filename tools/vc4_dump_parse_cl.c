@@ -29,6 +29,7 @@
 struct cl_dump_state {
         void *cl;
         uint32_t offset;
+        uint32_t end;
 
         uint8_t prim_mode;
 };
@@ -500,6 +501,94 @@ static const struct packet_info {
         PACKET_DUMP(VC4_PACKET_GEM_HANDLES),
 };
 
+static uint32_t
+dump_compressed_triangle(struct cl_dump_state *state, uint32_t offset)
+{
+        uint8_t *cl = state->cl;
+        uint32_t index_size = 2;
+
+        if (cl[offset] == 129) {
+                uint16_t *index = (void *)(&cl[offset + 1]);
+                dump_printf(state, offset, "0x%02x: 3 abs, 0 rel indices\n",
+                            cl[offset]);
+                dump_printf(state, offset + 2, "index 0: 0x%04x\n", index[0]);
+                dump_printf(state, offset + 4, "index 1: 0x%04x\n", index[1]);
+                dump_printf(state, offset + 6, "index 2: 0x%04x\n", index[2]);
+                return 3 * index_size;
+        } else if ((cl[offset] & 0xf) == 15) {
+                uint16_t *index = (void *)(&cl[offset + 2]);
+                dump_printf(state, offset, "0x%02x: 1 abs, 2 rel indices\n",
+                            cl[offset]);
+                dump_printf(state, offset + 2, "index 0: 0x%04x\n", *index);
+                return index_size + 3;
+        } else if ((cl[offset] & 0x3) == 3) {
+                dump_printf(state, offset,
+                            "0x%02x: 3 rel indices (%d, %d, %d)\n",
+                            cl[offset],
+                            (int8_t)cl[offset] >> 4,
+                            ((int8_t)cl[offset + 1] << 4) >> 4,
+                            (int8_t)cl[offset + 1] >> 4);
+                return 1;
+        } else {
+                dump_printf(state, offset, "0x%02x: 1 rel index (%d)\n",
+                            cl[offset], (int8_t)cl[offset] >> 2);
+                return 0;
+        }
+}
+
+static uint32_t
+dump_compressed_primitive(struct cl_dump_state *state)
+{
+        uint8_t *cl = state->cl;
+        uint32_t offset = 0;
+
+        while (state->offset + offset < state->end) {
+                if (cl[offset] == 128) {
+                        dump_printf(state, offset, "0x%02x: escape\n",
+                                    cl[offset]);
+                        return offset + 1;
+                } else if (cl[offset] == 130) {
+                        dump_printf(state, offset,
+                                    "0x%08x: relative branch (UNPARSED!)\n",
+                                    *(uint32_t *)(&cl[offset]));
+                        return ~0;
+                } else {
+                        switch (state->prim_mode) {
+                        case VC4_PRIMITIVE_LIST_FORMAT_TYPE_TRIANGLES:
+                                offset += dump_compressed_triangle(state,
+                                                                   offset);
+                                break;
+                        default:
+                                dump_printf(state, offset,
+                                            "0x%02x: unknown (UNPARSED!)\n",
+                                            cl[offset]);
+                        }
+                }
+
+                offset++;
+        }
+
+        printf("0x%08x: CL overflow!\n", offset);
+        return offset;
+}
+
+static uint32_t
+dump_clipped_compressed_primitive(struct cl_dump_state *state)
+{
+        uint32_t *addr = state->cl;
+
+        dump_printf(state, 0, "clipped verts at 0x%08x, clip 0x%1x\n",
+                    *addr & ~0x7, *addr & 0x7);
+
+        state->offset += 4;
+        state->cl += 4;
+        uint32_t compressed_len = dump_compressed_primitive(state);
+        if (compressed_len == ~0)
+                return compressed_len;
+        else
+                return compressed_len + 4;
+}
+
 void
 vc4_dump_cl(uint32_t start, uint32_t end, bool is_render)
 {
@@ -507,10 +596,12 @@ vc4_dump_cl(uint32_t start, uint32_t end, bool is_render)
         uint8_t *cmds = vc4_paddr_to_pointer(start);
         struct cl_dump_state state;
 
+        state.end = end;
         state.prim_mode = ~0;
 
         while (offset < end) {
                 uint8_t header = *cmds;
+                uint32_t size;
 
                 if (header > ARRAY_SIZE(packet_info) ||
                     !packet_info[header].name) {
@@ -524,13 +615,25 @@ vc4_dump_cl(uint32_t start, uint32_t end, bool is_render)
                        offset,
                        header, p->name);
 
-                if (offset + p->size <= end &&
-                    p->dump_func) {
-                        state.cl = cmds + 1;
-                        state.offset = offset + 1;
+                /* Use the per-packet size, unless it's variable length. */
+                size = p->size;
+
+                state.cl = cmds + 1;
+                state.offset = offset + 1;
+                if (header == VC4_PACKET_COMPRESSED_PRIMITIVE) {
+                        uint32_t len = dump_compressed_primitive(&state);
+                        if (len == ~0)
+                                return;
+                        size = len + 1;
+                } else if (header == VC4_PACKET_CLIPPED_COMPRESSED_PRIMITIVE) {
+                        uint32_t len = dump_clipped_compressed_primitive(&state);
+                        if (len == ~0)
+                                return;
+                        size = len + 1;
+                } else if (offset + size <= end && p->dump_func) {
                         p->dump_func(&state);
                 } else {
-                        for (uint32_t i = 1; i < p->size; i++) {
+                        for (uint32_t i = 1; i < size; i++) {
                                 if (offset + i >= end) {
                                         printf("0x%08x: CL overflow!\n",
                                                offset + i);
@@ -551,8 +654,8 @@ vc4_dump_cl(uint32_t start, uint32_t end, bool is_render)
                         break;
                 }
 
-                offset += p->size;
-                cmds += p->size;
+                offset += size;
+                cmds += size;
         }
 }
 
