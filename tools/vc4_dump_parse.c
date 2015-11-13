@@ -213,6 +213,27 @@ usage(const char *name)
         exit(1);
 }
 
+static void
+dump_registers(void)
+{
+        printf("Bin CL:         0x%08x to 0x%08x\n",
+               dump.state->start_bin, dump.state->ct0ea);
+        printf("Bin current:    0x%08x\n", dump.state->ct0ca);
+        printf("Render CL:      0x%08x to 0x%08x\n",
+               dump.state->start_render, dump.state->ct1ea);
+        printf("Render current: 0x%08x\n", dump.state->ct1ca);
+        printf("\n");
+
+        printf("V3D_VPMBASE:    0x%08x\n", dump.state->vpmbase);
+        printf("V3D_DBGE:       0x%08x\n", dump.state->dbge);
+        printf("V3D_FDBGO:      0x%08x\n", dump.state->fdbgo);
+        printf("V3D_FDBGB:      0x%08x\n", dump.state->fdbgb);
+        printf("V3D_FDBGR:      0x%08x\n", dump.state->fdbgr);
+        printf("V3D_FDBGS:      0x%08x\n", dump.state->fdbgs);
+        printf("V3D_ERRSTAT:    0x%08x\n", dump.state->errstat);
+        printf("\n");
+}
+
 int
 main(int argc, char **argv)
 {
@@ -226,6 +247,7 @@ main(int argc, char **argv)
         input = map_input(argv[1]);
         set_bo_maps(input);
 
+        dump_registers();
         parse_cls();
         parse_sublists();
 
