@@ -150,7 +150,7 @@ vc4_parse_add_mem_area_sized(enum vc4_mem_area_type type, uint32_t paddr,
         rec->addr = vc4_paddr_to_pointer(paddr);
         rec->size = size;
 
-        list_add(&rec->link, &dump.mem_areas);
+        list_addtail(&rec->link, &dump.mem_areas);
 }
 
 void

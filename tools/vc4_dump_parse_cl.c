@@ -69,6 +69,16 @@ dump_float(struct cl_dump_state *state)
 }
 
 static void
+dump_VC4_PACKET_BRANCH(struct cl_dump_state *state)
+{
+        uint32_t *addr = state->cl;
+
+        dump_printf(state, 0, "addr 0x%08x\n", *addr);
+
+        vc4_parse_add_mem_area(VC4_MEM_AREA_SUB_LIST, *addr);
+}
+
+static void
 dump_VC4_PACKET_BRANCH_TO_SUB_LIST(struct cl_dump_state *state)
 {
         uint32_t *addr = state->cl;
@@ -408,7 +418,7 @@ static const struct packet_info {
         PACKET(VC4_PACKET_INCREMENT_SEMAPHORE),
         PACKET(VC4_PACKET_WAIT_ON_SEMAPHORE),
 
-        PACKET(VC4_PACKET_BRANCH),
+        PACKET_DUMP(VC4_PACKET_BRANCH),
         PACKET_DUMP(VC4_PACKET_BRANCH_TO_SUB_LIST),
         PACKET(VC4_PACKET_RETURN_FROM_SUB_LIST),
 
