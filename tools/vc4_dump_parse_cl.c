@@ -78,7 +78,7 @@ dump_VC4_PACKET_BRANCH(struct cl_dump_state *state)
 
         dump_printf(state, 0, "addr 0x%08x\n", *addr);
 
-        vc4_parse_add_mem_area(VC4_MEM_AREA_SUB_LIST, *addr);
+        vc4_parse_add_sublist(*addr, state->prim_mode);
 }
 
 static void
@@ -88,7 +88,7 @@ dump_VC4_PACKET_BRANCH_TO_SUB_LIST(struct cl_dump_state *state)
 
         dump_printf(state, 0, "addr 0x%08x\n", *addr);
 
-        vc4_parse_add_mem_area(VC4_MEM_AREA_SUB_LIST, *addr);
+        vc4_parse_add_sublist(*addr, state->prim_mode);
 }
 
 static void
@@ -590,14 +590,15 @@ dump_clipped_compressed_primitive(struct cl_dump_state *state)
 }
 
 void
-vc4_dump_cl(uint32_t start, uint32_t end, bool is_render)
+vc4_dump_cl(uint32_t start, uint32_t end, bool is_render,
+            uint8_t start_prim_mode)
 {
         uint32_t offset = start;
         uint8_t *cmds = vc4_paddr_to_pointer(start);
         struct cl_dump_state state;
 
         state.end = end;
-        state.prim_mode = ~0;
+        state.prim_mode = start_prim_mode;
 
         while (offset < end) {
                 uint8_t header = *cmds;

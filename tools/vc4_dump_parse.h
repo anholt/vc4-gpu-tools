@@ -24,16 +24,24 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+struct vc4_mem_area_rec;
+
 enum vc4_mem_area_type {
         VC4_MEM_AREA_SHADER_REC,
         VC4_MEM_AREA_SUB_LIST,
 };
 
-void vc4_dump_cl(uint32_t start, uint32_t end, bool is_render);
+void vc4_dump_cl(uint32_t start, uint32_t end, bool is_render,
+                 uint8_t prim_mode);
 
 uint32_t vc4_pointer_to_paddr(void *p);
 void *vc4_paddr_to_pointer(uint32_t addr);
 
-void vc4_parse_add_mem_area(enum vc4_mem_area_type type, uint32_t paddr);
-void vc4_parse_add_mem_area_sized(enum vc4_mem_area_type type, uint32_t paddr,
-                                  uint32_t size);
+struct vc4_mem_area_rec *
+vc4_parse_add_mem_area(enum vc4_mem_area_type type, uint32_t paddr);
+
+struct vc4_mem_area_rec *
+vc4_parse_add_mem_area_sized(enum vc4_mem_area_type type, uint32_t paddr,
+                             uint32_t size);
+
+void vc4_parse_add_sublist(uint32_t paddr, uint8_t prim_mode);
