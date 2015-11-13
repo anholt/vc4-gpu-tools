@@ -29,6 +29,8 @@
 struct cl_dump_state {
         void *cl;
         uint32_t offset;
+
+        uint8_t prim_mode;
 };
 
 #define dump_VC4_PACKET_LINE_WIDTH dump_float
@@ -223,6 +225,43 @@ dump_VC4_PACKET_GL_ARRAY_PRIMITIVE(struct cl_dump_state *state)
         dump_printf(state, 0, "0x%02x %s\n", b[0], prim_name[b[0] & 0x7]);
         dump_printf(state, 1, "%d verts\n", *count);
         dump_printf(state, 5, "0x%08x start\n", *start);
+}
+
+static void
+dump_VC4_PACKET_PRIMITIVE_LIST_FORMAT(struct cl_dump_state *state)
+{
+        uint8_t *b = state->cl;
+        const char *prim_mode = "unknown";
+        const char *data_type = "unknown";
+
+        switch (*b & 0xf) {
+        case 0:
+                prim_mode = "points";
+                break;
+        case 1:
+                prim_mode = "lines";
+                break;
+        case 2:
+                prim_mode = "triangles";
+                break;
+        case 3:
+                prim_mode = "RHT";
+                break;
+        }
+
+        switch (*b >> 4) {
+        case 1:
+                data_type = "16-bit index";
+                break;
+        case 3:
+                prim_mode = "32-bit x/y";
+                break;
+        }
+
+        dump_printf(state, 0, "0x%02x: prim_mode %s, data_type %s\n",
+                    *b, prim_mode, data_type);
+
+        state->prim_mode = *b & 0x0f;
 }
 
 static void
@@ -435,7 +474,7 @@ static const struct packet_info {
         PACKET(VC4_PACKET_COMPRESSED_PRIMITIVE),
         PACKET(VC4_PACKET_CLIPPED_COMPRESSED_PRIMITIVE),
 
-        PACKET(VC4_PACKET_PRIMITIVE_LIST_FORMAT),
+        PACKET_DUMP(VC4_PACKET_PRIMITIVE_LIST_FORMAT),
 
         PACKET_DUMP(VC4_PACKET_GL_SHADER_STATE),
         PACKET(VC4_PACKET_NV_SHADER_STATE),
@@ -467,6 +506,8 @@ vc4_dump_cl(uint32_t start, uint32_t end, bool is_render)
         uint32_t offset = start;
         uint8_t *cmds = vc4_paddr_to_pointer(start);
         struct cl_dump_state state;
+
+        state.prim_mode = ~0;
 
         while (offset < end) {
                 uint8_t header = *cmds;
