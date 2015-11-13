@@ -161,7 +161,7 @@ vc4_parse_add_mem_area(enum vc4_mem_area_type type, uint32_t paddr)
 }
 
 static void
-parse_input(void *input)
+set_bo_maps(void *input)
 {
         uint32_t *version = input;
         if (*version != 0) {
@@ -224,7 +224,8 @@ main(int argc, char **argv)
                 usage(argv[0]);
 
         input = map_input(argv[1]);
-        parse_input(input);
+        set_bo_maps(input);
+
         parse_cls();
         parse_sublists();
 
