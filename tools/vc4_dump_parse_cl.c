@@ -410,6 +410,7 @@ static const struct packet_info {
 
         PACKET(VC4_PACKET_BRANCH),
         PACKET_DUMP(VC4_PACKET_BRANCH_TO_SUB_LIST),
+        PACKET(VC4_PACKET_RETURN_FROM_SUB_LIST),
 
         PACKET(VC4_PACKET_STORE_MS_TILE_BUFFER),
         PACKET(VC4_PACKET_STORE_MS_TILE_BUFFER_AND_EOF),
@@ -493,6 +494,7 @@ vc4_dump_cl(uint32_t start, uint32_t end, bool is_render)
                 switch (header) {
                 case VC4_PACKET_HALT:
                 case VC4_PACKET_STORE_MS_TILE_BUFFER_AND_EOF:
+                case VC4_PACKET_RETURN_FROM_SUB_LIST:
                         return;
                 default:
                         break;
