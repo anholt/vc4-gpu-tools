@@ -551,13 +551,13 @@ dump_compressed_primitive(struct cl_dump_state *state)
                         /* The packet's offset is a 2's complement relative
                          * branch.
                          */
-                        int32_t code = *(int32_t *)&cl[offset];
+                        int16_t branch = *(int16_t *)&cl[offset + 1];
                         uint32_t addr = (state->offset +
                                          offset +
-                                         ((code >> 8) << 5));
+                                         (branch << 5));
                         dump_printf(state, offset,
                                     "0x%08x: relative branch 0x%08x\n",
-                                    code, addr);
+                                    branch, addr);
                         vc4_parse_add_sublist(addr, state->prim_mode);
                         return ~0;
                 } else {
