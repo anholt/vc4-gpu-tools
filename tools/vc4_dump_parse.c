@@ -172,6 +172,14 @@ vc4_parse_add_sublist(uint32_t paddr, uint8_t prim_mode)
         rec->prim_mode = prim_mode;
 }
 
+void
+vc4_parse_add_compressed_list(uint32_t paddr, uint8_t prim_mode)
+{
+        struct vc4_mem_area_rec *rec;
+        rec = vc4_parse_add_mem_area(VC4_MEM_AREA_COMPRESSED_PRIM_LIST, paddr);
+        rec->prim_mode = prim_mode;
+}
+
 static void
 set_bo_maps(void *input)
 {
@@ -200,11 +208,13 @@ parse_cls(void)
 {
         if (dump.state->start_bin != dump.state->ct0ea) {
                 printf("Bin CL at 0x%08x\n", dump.state->start_bin);
-                vc4_dump_cl(dump.state->start_bin, dump.state->ct0ea, false, ~0);
+                vc4_dump_cl(dump.state->start_bin, dump.state->ct0ea,
+                            false, false, ~0);
         }
 
         printf("Render CL at 0x%08x\n", dump.state->start_render);
-        vc4_dump_cl(dump.state->start_render, dump.state->ct1ea, true, ~0);
+        vc4_dump_cl(dump.state->start_render, dump.state->ct1ea,
+                    true, false, ~0);
 }
 
 static void
@@ -212,10 +222,20 @@ parse_sublists(void)
 {
         list_for_each_entry(struct vc4_mem_area_rec, rec, &dump.mem_areas,
                             link) {
-                printf("Sublist at 0x%08x:\n", rec->paddr);
-                vc4_dump_cl(rec->paddr, rec->paddr + rec->size, true,
-                            rec->prim_mode);
-                printf("\n");
+                switch (rec->type) {
+                case VC4_MEM_AREA_SUB_LIST:
+                        printf("Sublist at 0x%08x:\n", rec->paddr);
+                        vc4_dump_cl(rec->paddr, rec->paddr + rec->size, true,
+                                    false, rec->prim_mode);
+                        break;
+                case VC4_MEM_AREA_COMPRESSED_PRIM_LIST:
+                        printf("Compressed list at 0x%08x:\n", rec->paddr);
+                        vc4_dump_cl(rec->paddr, rec->paddr + rec->size, true,
+                                    true, rec->prim_mode);
+                        break;
+                default:
+                        break;
+                }
         }
 }
 

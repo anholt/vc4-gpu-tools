@@ -558,7 +558,7 @@ dump_compressed_primitive(struct cl_dump_state *state)
                         dump_printf(state, offset,
                                     "0x%08x: relative branch 0x%08x\n",
                                     branch, addr);
-                        vc4_parse_add_sublist(addr, state->prim_mode);
+                        vc4_parse_add_compressed_list(addr, state->prim_mode);
                         return ~0;
                 } else {
                         switch (state->prim_mode) {
@@ -599,7 +599,7 @@ dump_clipped_compressed_primitive(struct cl_dump_state *state)
 
 void
 vc4_dump_cl(uint32_t start, uint32_t end, bool is_render,
-            uint8_t start_prim_mode)
+            bool in_compressed_list, uint8_t start_prim_mode)
 {
         uint32_t offset = start;
         uint8_t *cmds = vc4_paddr_to_pointer(start);
@@ -607,6 +607,20 @@ vc4_dump_cl(uint32_t start, uint32_t end, bool is_render,
 
         state.end = end;
         state.prim_mode = start_prim_mode;
+
+        /* A relative branch in a compressed list will continue at the branch
+         * target still in a compressed list.
+         */
+        if (in_compressed_list) {
+                state.cl = cmds;
+                state.offset = offset;
+                uint32_t len = dump_compressed_primitive(&state);
+                if (len == ~0)
+                        return;
+
+                cmds = state.cl + len;
+                offset = state.offset + len;
+        }
 
         while (offset < end) {
                 uint8_t header = *cmds;
