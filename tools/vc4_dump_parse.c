@@ -36,6 +36,7 @@
 #include "vc4_drm.h"
 
 #include "list.h"
+#include "vc4_tools.h"
 #include "vc4_dump_parse.h"
 
 static void *
@@ -246,6 +247,28 @@ usage(const char *name)
         exit(1);
 }
 
+static const struct {
+        int bit;
+        const char *name;
+} errstat_bits[] = {
+        { 15, "L2CARE: L2C AXI receive FIFO overrun error" },
+        { 14, "VCMRE: VCM error (binner)" },
+        { 13, "VCMRE: VCM error (renderer)" },
+        { 12, "VCDI: VCD Idle" },
+        { 11, "VCDE: VCD error - FIFO pointers out of snyc" },
+        { 10, "VDWE: VDW error - address overflows" },
+        { 9, "VPMEAS: VPM error - allocated size error" },
+        { 8, "VPMEFNA: VPM error - free non-allocated" },
+        { 7, "VPMEWNA: VPM error - write non-allocated" },
+        { 6, "VPMERNA: VPM error - read non-allocated" },
+        { 5, "VPMERR: VPM error - read range" },
+        { 4, "VPMEWR: VPM error - write range" },
+        { 3, "VPAERRGL: VPM allocator error - renderer request greater than limit" },
+        { 2, "VPAEBRGL: VPM allocator error - binner request greater than limit" },
+        { 1, "VPAERGS: VPM allocator error - request too big" },
+        { 0, "VPAEABB: VPM allocator error - allocating base while busy" },
+};
+
 static void
 dump_registers(void)
 {
@@ -259,11 +282,21 @@ dump_registers(void)
 
         printf("V3D_VPMBASE:    0x%08x\n", dump.state->vpmbase);
         printf("V3D_DBGE:       0x%08x\n", dump.state->dbge);
-        printf("V3D_FDBGO:      0x%08x\n", dump.state->fdbgo);
+        printf("V3D_FDBGO:      0x%08x: %s\n", dump.state->fdbgo,
+               (dump.state->fdbgo & ~((1 << 1) |
+                                      (1 << 2) |
+                                      (1 << 11))) ?
+               "some errors" : "no errors");
         printf("V3D_FDBGB:      0x%08x\n", dump.state->fdbgb);
         printf("V3D_FDBGR:      0x%08x\n", dump.state->fdbgr);
         printf("V3D_FDBGS:      0x%08x\n", dump.state->fdbgs);
+        printf("\n");
         printf("V3D_ERRSTAT:    0x%08x\n", dump.state->errstat);
+        for (int i = 0; i < ARRAY_SIZE(errstat_bits); i++) {
+                if (dump.state->errstat & (1 << errstat_bits[i].bit))
+                        printf("V3D_ERRSTAT:    %s\n", errstat_bits[i].name);
+        }
+
         printf("\n");
 }
 
