@@ -672,6 +672,7 @@ vc4_dump_cl(uint32_t start, uint32_t end, bool is_render,
                 case VC4_PACKET_HALT:
                 case VC4_PACKET_STORE_MS_TILE_BUFFER_AND_EOF:
                 case VC4_PACKET_RETURN_FROM_SUB_LIST:
+                case VC4_PACKET_BRANCH:
                         return;
                 default:
                         break;
