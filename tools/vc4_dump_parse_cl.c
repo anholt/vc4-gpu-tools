@@ -556,8 +556,8 @@ dump_compressed_primitive(struct cl_dump_state *state)
                                          offset +
                                          (branch << 5));
                         dump_printf(state, offset,
-                                    "0x%08x: relative branch 0x%08x\n",
-                                    branch, addr);
+                                    "0x%02x: relative branch 0x%08x (0x%04x)\n",
+                                    cl[offset], addr, (uint16_t)branch);
                         vc4_parse_add_compressed_list(addr, state->prim_mode);
                         return ~0;
                 } else {
