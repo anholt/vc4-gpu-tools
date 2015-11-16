@@ -501,6 +501,9 @@ static const struct packet_info {
         PACKET_DUMP(VC4_PACKET_GEM_HANDLES),
 };
 
+/* Prints a single entry from Table 39: Compressed Triangles List Indices, and
+ * returns the length of the encoding.
+ */
 static uint32_t
 dump_compressed_triangle(struct cl_dump_state *state, uint32_t offset)
 {
@@ -514,13 +517,13 @@ dump_compressed_triangle(struct cl_dump_state *state, uint32_t offset)
                 dump_printf(state, offset + 2, "index 0: 0x%04x\n", index[0]);
                 dump_printf(state, offset + 4, "index 1: 0x%04x\n", index[1]);
                 dump_printf(state, offset + 6, "index 2: 0x%04x\n", index[2]);
-                return 3 * index_size;
+                return 1 + 3 * index_size;
         } else if ((cl[offset] & 0xf) == 15) {
                 uint16_t *index = (void *)(&cl[offset + 2]);
                 dump_printf(state, offset, "0x%02x: 1 abs, 2 rel indices\n",
                             cl[offset]);
                 dump_printf(state, offset + 2, "index 0: 0x%04x\n", *index);
-                return index_size + 3;
+                return 2 + index_size;
         } else if ((cl[offset] & 0x3) == 3) {
                 dump_printf(state, offset,
                             "0x%02x: 3 rel indices (%d, %d, %d)\n",
@@ -528,11 +531,11 @@ dump_compressed_triangle(struct cl_dump_state *state, uint32_t offset)
                             (int8_t)cl[offset] >> 4,
                             ((int8_t)cl[offset + 1] << 4) >> 4,
                             (int8_t)cl[offset + 1] >> 4);
-                return 1;
+                return 2;
         } else {
                 dump_printf(state, offset, "0x%02x: 1 rel index (%d)\n",
                             cl[offset], (int8_t)cl[offset] >> 2);
-                return 0;
+                return 1;
         }
 }
 
@@ -564,7 +567,7 @@ dump_compressed_primitive(struct cl_dump_state *state)
                         switch (state->prim_mode) {
                         case VC4_PRIMITIVE_LIST_FORMAT_TYPE_TRIANGLES:
                                 offset += dump_compressed_triangle(state,
-                                                                   offset);
+                                                                   offset) - 1;
                                 break;
                         default:
                                 dump_printf(state, offset,
