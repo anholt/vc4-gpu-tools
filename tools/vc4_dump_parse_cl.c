@@ -555,8 +555,7 @@ dump_compressed_primitive(struct cl_dump_state *state)
                          * branch.
                          */
                         int16_t branch = *(int16_t *)&cl[offset + 1];
-                        uint32_t addr = (state->offset +
-                                         offset +
+                        uint32_t addr = (((state->offset + offset) & ~31) +
                                          (branch << 5));
                         dump_printf(state, offset,
                                     "0x%02x: relative branch 0x%08x (0x%04x)\n",
