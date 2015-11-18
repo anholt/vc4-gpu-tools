@@ -283,6 +283,48 @@ dump_VC4_PACKET_GL_SHADER_STATE(struct cl_dump_state *state)
 }
 
 static void
+dump_VC4_PACKET_CONFIGURATION_BITS(struct cl_dump_state *state)
+{
+        uint8_t *b = state->cl;
+        const char *msaa;
+
+        switch (b[0] & VC4_CONFIG_BITS_RASTERIZER_OVERSAMPLE_MASK) {
+        case VC4_CONFIG_BITS_RASTERIZER_OVERSAMPLE_NONE:
+                msaa = "1x";
+                break;
+        case VC4_CONFIG_BITS_RASTERIZER_OVERSAMPLE_4X:
+                msaa = "4x";
+                break;
+        case VC4_CONFIG_BITS_RASTERIZER_OVERSAMPLE_16X:
+                msaa = "16x";
+                break;
+        default:
+                msaa = "unknownx";
+                break;
+        }
+
+        dump_printf(state, 0,
+                    "0x%02x f %d, b %d, %s, depthoff %d, aapointslines %d, %s\n",
+                    b[0],
+                    (b[0] & VC4_CONFIG_BITS_ENABLE_PRIM_FRONT) != 0,
+                    (b[0] & VC4_CONFIG_BITS_ENABLE_PRIM_BACK) != 0,
+                    (b[0] & VC4_CONFIG_BITS_CW_PRIMITIVES) ? "cw" : "ccw",
+                    (b[0] & VC4_CONFIG_BITS_ENABLE_DEPTH_OFFSET) != 0,
+                    (b[0] & VC4_CONFIG_BITS_AA_POINTS_AND_LINES) != 0,
+                    msaa);
+
+        dump_printf(state, 1, "0x%02x z_upd %d, z_func %d\n", b[1],
+                    (b[1] & VC4_CONFIG_BITS_Z_UPDATE) != 0,
+                    ((b[1] >> VC4_CONFIG_BITS_DEPTH_FUNC_SHIFT) & 0x7));
+
+
+        dump_printf(state, 2, "0x%02x ez %d, ezup %d\n", b[2],
+                    (b[2] & VC4_CONFIG_BITS_EARLY_Z) != 0,
+                    (b[2] & VC4_CONFIG_BITS_EARLY_Z_UPDATE) != 0);
+
+}
+
+static void
 dump_VC4_PACKET_FLAT_SHADE_FLAGS(struct cl_dump_state *state)
 {
         uint32_t *bits = state->cl;
@@ -481,7 +523,7 @@ static const struct packet_info {
         PACKET(VC4_PACKET_NV_SHADER_STATE),
         PACKET(VC4_PACKET_VG_SHADER_STATE),
 
-        PACKET(VC4_PACKET_CONFIGURATION_BITS),
+        PACKET_DUMP(VC4_PACKET_CONFIGURATION_BITS),
         PACKET_DUMP(VC4_PACKET_FLAT_SHADE_FLAGS),
         PACKET_DUMP(VC4_PACKET_POINT_SIZE),
         PACKET_DUMP(VC4_PACKET_LINE_WIDTH),
