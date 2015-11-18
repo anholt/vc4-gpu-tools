@@ -399,7 +399,6 @@ dump_VC4_PACKET_TILE_RENDERING_MODE_CONFIG(struct cl_dump_state *state)
 {
         uint32_t *render_offset = state->cl;
         uint16_t *shorts = state->cl + 4;
-        uint8_t *bytes = state->cl + 8;
 
         dump_printf(state, 0, "color offset 0x%08x\n", *render_offset);
         dump_printf(state, 4, "width %d\n", shorts[0]);
@@ -433,13 +432,6 @@ dump_VC4_PACKET_TILE_RENDERING_MODE_CONFIG(struct cl_dump_state *state)
                 break;
         }
 
-        dump_printf(state, 8, "0x%02x %s %s %s %s\n",
-                    bytes[0],
-                    format, tiling,
-                    (shorts[2] & VC4_RENDER_CONFIG_MS_MODE_4X) ? "ms" : "ss",
-                    (shorts[2] & VC4_RENDER_CONFIG_DECIMATE_MODE_4X) ?
-                    "ms_decimate" : "ss_decimate");
-
         const char *earlyz = "";
         if (shorts[2] & VC4_RENDER_CONFIG_EARLY_Z_COVERAGE_DISABLE) {
                 earlyz = "early_z disabled";
@@ -450,7 +442,27 @@ dump_VC4_PACKET_TILE_RENDERING_MODE_CONFIG(struct cl_dump_state *state)
                         earlyz = "early_z <";
         }
 
-        dump_printf(state, 0, "0x%02x %s\n", bytes[1], earlyz);
+        const char *decimate;
+        switch (shorts[2] & VC4_RENDER_CONFIG_DECIMATE_MODE_MASK) {
+        case VC4_RENDER_CONFIG_DECIMATE_MODE_1X:
+                decimate = "1x";
+                break;
+        case VC4_RENDER_CONFIG_DECIMATE_MODE_4X:
+                decimate = "4x";
+                break;
+        case VC4_RENDER_CONFIG_DECIMATE_MODE_16X:
+                decimate = "16x";
+                break;
+        default:
+                decimate = "unknown";
+                break;
+        }
+
+        dump_printf(state, 8, "0x%04x %s, %s, %s, %s, decimate %s\n", shorts[2],
+                    format, tiling,
+                    earlyz,
+                    (shorts[2] & VC4_RENDER_CONFIG_MS_MODE_4X) ? "ms_4x" : "ss",
+                    decimate);
 }
 
 static void

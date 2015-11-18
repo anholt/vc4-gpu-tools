@@ -285,6 +285,7 @@ enum vc4_packet {
 #define VC4_RENDER_CONFIG_DECIMATE_MODE_1X         (0 << 4)
 #define VC4_RENDER_CONFIG_DECIMATE_MODE_4X         (1 << 4)
 #define VC4_RENDER_CONFIG_DECIMATE_MODE_16X        (2 << 4)
+#define VC4_RENDER_CONFIG_DECIMATE_MODE_MASK       (3 << 4)
 
 #define VC4_RENDER_CONFIG_FORMAT_MASK              VC4_MASK(3, 2)
 #define VC4_RENDER_CONFIG_FORMAT_SHIFT             2
