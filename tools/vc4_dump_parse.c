@@ -258,11 +258,13 @@ parse_sublists(void)
                         printf("Sublist at 0x%08x:\n", rec->paddr);
                         vc4_dump_cl(rec->paddr, rec->paddr + rec->size, true,
                                     false, rec->prim_mode);
+                        printf("\n");
                         break;
                 case VC4_MEM_AREA_COMPRESSED_PRIM_LIST:
                         printf("Compressed list at 0x%08x:\n", rec->paddr);
                         vc4_dump_cl(rec->paddr, rec->paddr + rec->size, true,
                                     true, rec->prim_mode);
+                        printf("\n");
                         break;
                 default:
                         break;
