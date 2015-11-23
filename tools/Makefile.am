@@ -41,4 +41,5 @@ vc4_dump_parse_SOURCES = \
 	vc4_dump_parse.c \
 	vc4_dump_parse.h \
 	vc4_dump_parse_cl.c \
+	vc4_qpu_disasm.c \
 	$()
