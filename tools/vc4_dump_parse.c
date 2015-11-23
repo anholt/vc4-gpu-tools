@@ -145,45 +145,82 @@ vc4_get_end_paddr(uint32_t paddr)
         return NULL;
 }
 
-struct vc4_mem_area_rec *
-vc4_parse_add_mem_area_sized(enum vc4_mem_area_type type, uint32_t paddr,
-                             uint32_t size)
+static struct vc4_mem_area_rec *
+vc4_add_mem_area_to_list(struct vc4_mem_area_rec *rec)
 {
-        struct vc4_mem_area_rec *rec;
+        /* Don't add exact duplicates of memory areas to the list.  We have to
+         * be careful to not compare the list pointers, since the new rec
+         * won't be in the list.
+         */
+        struct vc4_mem_area_rec compare_a = *rec;
+        memset(&compare_a.link, 0, sizeof(compare_a.link));
+        list_for_each_entry(struct vc4_mem_area_rec, list_rec, &dump.mem_areas,
+                            link) {
+                struct vc4_mem_area_rec compare_b = *list_rec;
+                memset(&compare_b.link, 0, sizeof(compare_b.link));
+                if (memcmp(&compare_a, &compare_b, sizeof(compare_a)) == 0)
+                        return list_rec;
+        }
 
-        rec = calloc(1, sizeof(*rec));
+        struct vc4_mem_area_rec *list_rec = malloc(sizeof(*list_rec));
+        *list_rec = *rec;
+        list_addtail(&list_rec->link, &dump.mem_areas);
+        return list_rec;
+}
+
+static void
+vc4_init_mem_area(struct vc4_mem_area_rec *rec, enum vc4_mem_area_type type,
+                  uint32_t paddr, uint32_t size)
+{
+        memset(rec, 0, sizeof(*rec));
         rec->type = type;
         rec->paddr = paddr;
         rec->addr = vc4_paddr_to_pointer(paddr);
         rec->size = size;
         rec->prim_mode = ~0;
+}
 
-        list_addtail(&rec->link, &dump.mem_areas);
+static void
+vc4_init_mem_area_unsized(struct vc4_mem_area_rec *rec,
+                          enum vc4_mem_area_type type, uint32_t paddr)
+{
+        vc4_init_mem_area(rec, type, paddr, vc4_get_end_paddr(paddr) - paddr);
+}
 
-        return rec;
+struct vc4_mem_area_rec *
+vc4_parse_add_mem_area_sized(enum vc4_mem_area_type type, uint32_t paddr,
+                             uint32_t size)
+{
+        struct vc4_mem_area_rec rec;
+        vc4_init_mem_area(&rec, type, paddr, size);
+        return vc4_add_mem_area_to_list(&rec);
 }
 
 struct vc4_mem_area_rec *
 vc4_parse_add_mem_area(enum vc4_mem_area_type type, uint32_t paddr)
 {
-        uint32_t end_paddr = vc4_get_end_paddr(paddr);
-        return vc4_parse_add_mem_area_sized(type, paddr, end_paddr - paddr);
+        struct vc4_mem_area_rec rec;
+        vc4_init_mem_area_unsized(&rec, type, paddr);
+        return vc4_add_mem_area_to_list(&rec);
 }
 
 void
 vc4_parse_add_sublist(uint32_t paddr, uint8_t prim_mode)
 {
-        struct vc4_mem_area_rec *rec;
-        rec = vc4_parse_add_mem_area(VC4_MEM_AREA_SUB_LIST, paddr);
-        rec->prim_mode = prim_mode;
+        struct vc4_mem_area_rec rec;
+        vc4_init_mem_area_unsized(&rec, VC4_MEM_AREA_SUB_LIST, paddr);
+        rec.prim_mode = prim_mode;
+        vc4_add_mem_area_to_list(&rec);
 }
 
 void
 vc4_parse_add_compressed_list(uint32_t paddr, uint8_t prim_mode)
 {
-        struct vc4_mem_area_rec *rec;
-        rec = vc4_parse_add_mem_area(VC4_MEM_AREA_COMPRESSED_PRIM_LIST, paddr);
-        rec->prim_mode = prim_mode;
+        struct vc4_mem_area_rec rec;
+        vc4_init_mem_area_unsized(&rec,
+                                  VC4_MEM_AREA_COMPRESSED_PRIM_LIST, paddr);
+        rec.prim_mode = prim_mode;
+        vc4_add_mem_area_to_list(&rec);
 }
 
 void
@@ -193,22 +230,11 @@ vc4_parse_add_gl_shader_rec(uint32_t paddr, uint8_t attributes, bool extended)
 
         assert(!extended);
 
-        list_for_each_entry(struct vc4_mem_area_rec, rec, &dump.mem_areas,
-                            link) {
-                if (rec->type == VC4_MEM_AREA_GL_SHADER_REC &&
-                    rec->paddr == paddr &&
-                    rec->size == size &&
-                    rec->attributes == attributes &&
-                    rec->extended == extended) {
-                        return;
-                }
-        }
-
-        struct vc4_mem_area_rec *rec =
-                vc4_parse_add_mem_area_sized(VC4_MEM_AREA_GL_SHADER_REC, paddr,
-                                             size);
-        rec->attributes = attributes;
-        rec->extended = extended;
+        struct vc4_mem_area_rec rec;
+        vc4_init_mem_area(&rec, VC4_MEM_AREA_GL_SHADER_REC, paddr, size);
+        rec.attributes = attributes;
+        rec.extended = extended;
+        vc4_add_mem_area_to_list(&rec);
 }
 
 static void
