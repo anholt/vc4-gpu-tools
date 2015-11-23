@@ -268,7 +268,7 @@ dump_VC4_PACKET_PRIMITIVE_LIST_FORMAT(struct cl_dump_state *state)
 static void
 dump_VC4_PACKET_GL_SHADER_STATE(struct cl_dump_state *state)
 {
-        uint8_t *addr = state->cl;
+        uint32_t *addr = state->cl;
         uint32_t paddr = *addr & ~0xf;
         uint8_t attributes = *addr & 7;
         bool extended;
@@ -280,6 +280,8 @@ dump_VC4_PACKET_GL_SHADER_STATE(struct cl_dump_state *state)
         dump_printf(state, 0, "0x%08x %d attr count, %s\n",
                     paddr, attributes,
                     extended ? "extended" : "unextended");
+
+        vc4_parse_add_gl_shader_rec(paddr, attributes, extended);
 }
 
 static void
