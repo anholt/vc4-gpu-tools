@@ -30,6 +30,9 @@ enum vc4_mem_area_type {
         VC4_MEM_AREA_GL_SHADER_REC,
         VC4_MEM_AREA_SUB_LIST,
         VC4_MEM_AREA_COMPRESSED_PRIM_LIST,
+        VC4_MEM_AREA_CS,
+        VC4_MEM_AREA_VS,
+        VC4_MEM_AREA_FS,
 };
 
 void vc4_dump_cl(uint32_t start, uint32_t end, bool is_render,
