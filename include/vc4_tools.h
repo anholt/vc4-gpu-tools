@@ -51,4 +51,4 @@ fui(float f)
 }
 
 void
-vc4_qpu_disasm(const uint64_t *instructions, int num_instructions);
+vc4_qpu_disasm(FILE *out, const uint64_t *instructions, int num_instructions);
