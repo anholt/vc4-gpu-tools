@@ -127,7 +127,7 @@ vc4_pointer_to_paddr(void *p)
         fprintf(stderr, "Couldn't translate pointer %p\n", p);
         dump_bo_list();
 
-        return NULL;
+        return 0;
 }
 
 static uint32_t
@@ -143,7 +143,7 @@ vc4_get_end_paddr(uint32_t paddr)
         fprintf(stderr, "Couldn't translate paddr 0x%08x\n", paddr);
         dump_bo_list();
 
-        return NULL;
+        return 0;
 }
 
 static struct vc4_mem_area_rec *
