@@ -673,6 +673,11 @@ vc4_dump_cl(uint32_t start, uint32_t end, bool is_render,
         uint8_t *cmds = vc4_paddr_to_pointer(start);
         struct cl_dump_state state;
 
+        if (!cmds) {
+                fprintf(stderr, "No mapping found\n");
+                return;
+        }
+
         state.end = end;
         state.prim_mode = start_prim_mode;
 

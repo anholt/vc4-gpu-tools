@@ -290,12 +290,20 @@ parse_sublists(void)
                 switch (rec->type) {
                 case VC4_MEM_AREA_SUB_LIST:
                         printf("Sublist at 0x%08x:\n", rec->paddr);
+                        if (!rec->addr) {
+                                printf("    No mapping found\n");
+                                continue;
+                        }
                         vc4_dump_cl(rec->paddr, rec->paddr + rec->size, true,
                                     false, rec->prim_mode);
                         printf("\n");
                         break;
                 case VC4_MEM_AREA_COMPRESSED_PRIM_LIST:
                         printf("Compressed list at 0x%08x:\n", rec->paddr);
+                        if (!rec->addr) {
+                                printf("    No mapping found\n");
+                                continue;
+                        }
                         vc4_dump_cl(rec->paddr, rec->paddr + rec->size, true,
                                     true, rec->prim_mode);
                         printf("\n");
@@ -318,6 +326,11 @@ parse_gl_shader_rec(struct vc4_mem_area_rec *rec)
                "(%d attributes, %sextended):\n", rec->paddr,
                rec->attributes,
                rec->extended ? "" : "not ");
+
+        if (!rec->addr) {
+                printf("    No mapping found\n");
+                return;
+        }
 
         printf("0x%08x:     0x%04x: %s, %s, %s\n",
                paddr, s[0],
@@ -370,6 +383,11 @@ parse_nv_shader_rec(struct vc4_mem_area_rec *rec)
         uint8_t *b = addr;
 
         printf("NV Shader rec at 0x%08x:\n", rec->paddr);
+
+        if (!rec->addr) {
+                printf("    No mapping found\n");
+                return;
+        }
 
         printf("0x%08x:     0x%02x: %sclip coords, %s, %s, %s\n",
                paddr, b[0],
@@ -437,6 +455,11 @@ parse_shaders(void)
                 }
 
                 printf("%s at 0x%08x:\n", type, rec->paddr);
+
+                if (!rec->addr) {
+                        printf("    No mapping found\n");
+                        continue;
+                }
 
                 uint32_t end_offset = ~0;
                 for (uint32_t offset = 0;
