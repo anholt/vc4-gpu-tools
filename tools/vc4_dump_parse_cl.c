@@ -68,7 +68,7 @@ static void
 dump_float(struct cl_dump_state *state)
 {
         dump_printf(state, 0, "%f (0x%08x)\n",
-                    *(float *)state->cl, *(uint32_t *)state->cl);
+                    uif(*(uint32_t *)state->cl), *(uint32_t *)state->cl);
 }
 
 static void
