@@ -285,6 +285,16 @@ dump_VC4_PACKET_GL_SHADER_STATE(struct cl_dump_state *state)
 }
 
 static void
+dump_VC4_PACKET_NV_SHADER_STATE(struct cl_dump_state *state)
+{
+        uint32_t *addr = state->cl;
+
+        dump_printf(state, 0, "0x%08x\n", *addr);
+
+        vc4_parse_add_nv_shader_rec(*addr);
+}
+
+static void
 dump_VC4_PACKET_CONFIGURATION_BITS(struct cl_dump_state *state)
 {
         uint8_t *b = state->cl;
@@ -534,7 +544,7 @@ static const struct packet_info {
         PACKET_DUMP(VC4_PACKET_PRIMITIVE_LIST_FORMAT),
 
         PACKET_DUMP(VC4_PACKET_GL_SHADER_STATE),
-        PACKET(VC4_PACKET_NV_SHADER_STATE),
+        PACKET_DUMP(VC4_PACKET_NV_SHADER_STATE),
         PACKET(VC4_PACKET_VG_SHADER_STATE),
 
         PACKET_DUMP(VC4_PACKET_CONFIGURATION_BITS),

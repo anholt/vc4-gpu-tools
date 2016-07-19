@@ -235,6 +235,13 @@ vc4_parse_add_gl_shader_rec(uint32_t paddr, uint8_t attributes, bool extended)
         vc4_init_mem_area(&rec, VC4_MEM_AREA_GL_SHADER_REC, paddr, size);
         rec.attributes = attributes;
         rec.extended = extended;
+}
+
+void
+vc4_parse_add_nv_shader_rec(uint32_t paddr)
+{
+        struct vc4_mem_area_rec rec;
+        vc4_init_mem_area(&rec, VC4_MEM_AREA_NV_SHADER_REC, paddr, 16);
         vc4_add_mem_area_to_list(&rec);
 }
 
@@ -356,12 +363,55 @@ parse_gl_shader_rec(struct vc4_mem_area_rec *rec)
 }
 
 static void
+parse_nv_shader_rec(struct vc4_mem_area_rec *rec)
+{
+        uint32_t paddr = rec->paddr;
+        void *addr = rec->addr;
+        uint8_t *b = addr;
+
+        printf("NV Shader rec at 0x%08x:\n", rec->paddr);
+
+        printf("0x%08x:     0x%02x: %sclip coords, %s, %s, %s\n",
+               paddr, b[0],
+               (b[0] & VC4_SHADER_FLAG_SHADED_CLIP_COORDS) ?
+               "" : "no ",
+               (b[0] & VC4_SHADER_FLAG_ENABLE_CLIPPING) ?
+               "clipped" : "unclipped",
+               (b[0] & VC4_SHADER_FLAG_FS_SINGLE_THREAD) ?
+               "single thread" : "dual thread",
+               (b[0] & VC4_SHADER_FLAG_VS_POINT_SIZE) ?
+               "point size" : "no point size");
+
+        printf("0x%08x:     0x%02x: vertex stride\n", paddr + 1, b[1]);
+        printf("0x%08x:     0x%02x: fs num uniforms\n", paddr + 2, b[2]);
+        printf("0x%08x:     0x%02x: fs inputs\n", paddr + 3, b[3]);
+        printf("0x%08x:     0x%04x: fs code\n", paddr + 4,
+               *(uint32_t *)(addr + 4));
+        vc4_parse_add_mem_area(VC4_MEM_AREA_FS,
+                               *(uint32_t *)(addr + 4));
+        printf("0x%08x:     0x%04x: fs uniforms\n", paddr + 8,
+               *(uint32_t *)(addr + 8));
+        printf("0x%08x:     0x%04x: vertex data\n", paddr + 12,
+               *(uint32_t *)(addr + 12));
+
+        printf("\n");
+}
+
+static void
 parse_shader_recs(void)
 {
         list_for_each_entry(struct vc4_mem_area_rec, rec, &dump.mem_areas,
                             link) {
-                if (rec->type == VC4_MEM_AREA_GL_SHADER_REC)
+                switch (rec->type) {
+                case VC4_MEM_AREA_GL_SHADER_REC:
                         parse_gl_shader_rec(rec);
+                        break;
+                case VC4_MEM_AREA_NV_SHADER_REC:
+                        parse_nv_shader_rec(rec);
+                        break;
+                default:
+                        break;
+                }
         }
 }
 

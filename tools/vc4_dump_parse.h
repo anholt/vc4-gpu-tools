@@ -28,6 +28,7 @@ struct vc4_mem_area_rec;
 
 enum vc4_mem_area_type {
         VC4_MEM_AREA_GL_SHADER_REC,
+        VC4_MEM_AREA_NV_SHADER_REC,
         VC4_MEM_AREA_SUB_LIST,
         VC4_MEM_AREA_COMPRESSED_PRIM_LIST,
         VC4_MEM_AREA_CS,
@@ -52,3 +53,4 @@ void vc4_parse_add_sublist(uint32_t paddr, uint8_t prim_mode);
 void vc4_parse_add_compressed_list(uint32_t paddr, uint8_t prim_mode);
 void vc4_parse_add_gl_shader_rec(uint32_t paddr, uint8_t attributes,
                                  bool extended);
+void vc4_parse_add_nv_shader_rec(uint32_t paddr);
