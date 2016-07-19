@@ -300,64 +300,68 @@ parse_sublists(void)
 }
 
 static void
+parse_gl_shader_rec(struct vc4_mem_area_rec *rec)
+{
+        uint32_t paddr = rec->paddr;
+        void *addr = rec->addr;
+        uint8_t *b = addr;
+        uint16_t *s = addr;
+
+        printf("GL Shader rec at 0x%08x "
+               "(%d attributes, %sextended):\n", rec->paddr,
+               rec->attributes,
+               rec->extended ? "" : "not ");
+
+        printf("0x%08x:     0x%04x: %s, %s, %s\n",
+               paddr, s[0],
+               (s[0] & VC4_SHADER_FLAG_ENABLE_CLIPPING) ?
+               "clipped" : "unclipped",
+               (s[0] & VC4_SHADER_FLAG_FS_SINGLE_THREAD) ?
+               "single thread" : "dual thread",
+               (s[0] & VC4_SHADER_FLAG_VS_POINT_SIZE) ?
+               "point size" : "no point size");
+
+        printf("0x%08x:     0x%02x: fs num uniforms\n", paddr + 2, b[2]);
+        printf("0x%08x:     0x%02x: fs inputs\n", paddr + 3, b[3]);
+        printf("0x%08x:     0x%04x: fs code\n", paddr + 4,
+               *(uint32_t *)(addr + 4));
+        printf("0x%08x:     0x%04x: fs uniforms\n", paddr + 8,
+               *(uint32_t *)(addr + 8));
+        vc4_parse_add_mem_area(VC4_MEM_AREA_FS,
+                               *(uint32_t *)(addr + 4));
+
+        printf("0x%08x:     0x%04x: vs num uniforms\n", paddr + 12,
+               *(uint16_t *)(addr + 12));
+        printf("0x%08x:     0x%02x: vs inputs\n", paddr + 14, b[14]);
+        printf("0x%08x:     0x%02x: vs attr size\n", paddr + 15, b[15]);
+        printf("0x%08x:     0x%04x: vs code\n", paddr + 16,
+               *(uint32_t *)(addr + 16));
+        printf("0x%08x:     0x%04x: vs uniforms\n", paddr + 20,
+               *(uint32_t *)(addr + 20));
+        vc4_parse_add_mem_area(VC4_MEM_AREA_VS,
+                               *(uint32_t *)(addr + 16));
+
+        printf("0x%08x:     0x%04x: cs num uniforms\n", paddr + 24,
+               *(uint16_t *)(addr + 24));
+        printf("0x%08x:     0x%02x: cs inputs\n", paddr + 26, b[26]);
+        printf("0x%08x:     0x%02x: cs attr size\n", paddr + 27, b[27]);
+        printf("0x%08x:     0x%04x: cs code\n", paddr + 28,
+               *(uint32_t *)(addr + 28));
+        printf("0x%08x:     0x%04x: cs uniforms\n", paddr + 32,
+               *(uint32_t *)(addr + 32));
+        vc4_parse_add_mem_area(VC4_MEM_AREA_CS,
+                               *(uint32_t *)(addr + 28));
+
+        printf("\n");
+}
+
+static void
 parse_shader_recs(void)
 {
         list_for_each_entry(struct vc4_mem_area_rec, rec, &dump.mem_areas,
                             link) {
-                if (rec->type != VC4_MEM_AREA_GL_SHADER_REC)
-                        continue;
-
-                uint32_t paddr = rec->paddr;
-                void *addr = rec->addr;
-                uint8_t *b = addr;
-                uint16_t *s = addr;
-
-                printf("GL Shader rec at 0x%08x "
-                       "(%d attributes, %sextended):\n", rec->paddr,
-                       rec->attributes,
-                       rec->extended ? "" : "not ");
-
-                printf("0x%08x:     0x%04x: %s, %s, %s\n",
-                       paddr, s[0],
-                       (s[0] & VC4_SHADER_FLAG_ENABLE_CLIPPING) ?
-                       "clipped" : "unclipped",
-                       (s[0] & VC4_SHADER_FLAG_FS_SINGLE_THREAD) ?
-                       "single thread" : "dual thread",
-                       (s[0] & VC4_SHADER_FLAG_VS_POINT_SIZE) ?
-                       "point size" : "no point size");
-
-                printf("0x%08x:     0x%02x: fs num uniforms\n", paddr + 2, b[2]);
-                printf("0x%08x:     0x%02x: fs inputs\n", paddr + 3, b[3]);
-                printf("0x%08x:     0x%04x: fs code\n", paddr + 4,
-                       *(uint32_t *)(addr + 4));
-                printf("0x%08x:     0x%04x: fs uniforms\n", paddr + 8,
-                       *(uint32_t *)(addr + 8));
-                vc4_parse_add_mem_area(VC4_MEM_AREA_FS,
-                                       *(uint32_t *)(addr + 4));
-
-                printf("0x%08x:     0x%04x: vs num uniforms\n", paddr + 12,
-                       *(uint16_t *)(addr + 12));
-                printf("0x%08x:     0x%02x: vs inputs\n", paddr + 14, b[14]);
-                printf("0x%08x:     0x%02x: vs attr size\n", paddr + 15, b[15]);
-                printf("0x%08x:     0x%04x: vs code\n", paddr + 16,
-                       *(uint32_t *)(addr + 16));
-                printf("0x%08x:     0x%04x: vs uniforms\n", paddr + 20,
-                       *(uint32_t *)(addr + 20));
-                vc4_parse_add_mem_area(VC4_MEM_AREA_VS,
-                                       *(uint32_t *)(addr + 16));
-
-                printf("0x%08x:     0x%04x: cs num uniforms\n", paddr + 24,
-                       *(uint16_t *)(addr + 24));
-                printf("0x%08x:     0x%02x: cs inputs\n", paddr + 26, b[26]);
-                printf("0x%08x:     0x%02x: cs attr size\n", paddr + 27, b[27]);
-                printf("0x%08x:     0x%04x: cs code\n", paddr + 28,
-                       *(uint32_t *)(addr + 28));
-                printf("0x%08x:     0x%04x: cs uniforms\n", paddr + 32,
-                       *(uint32_t *)(addr + 32));
-                vc4_parse_add_mem_area(VC4_MEM_AREA_CS,
-                                       *(uint32_t *)(addr + 28));
-
-                printf("\n");
+                if (rec->type == VC4_MEM_AREA_GL_SHADER_REC)
+                        parse_gl_shader_rec(rec);
         }
 }
 
