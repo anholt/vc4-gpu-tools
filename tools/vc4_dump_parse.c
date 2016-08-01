@@ -373,6 +373,28 @@ parse_gl_shader_rec(struct vc4_mem_area_rec *rec)
         vc4_parse_add_mem_area(VC4_MEM_AREA_CS,
                                *(uint32_t *)(addr + 28));
 
+        for (int i = 0; i < rec->attributes; i++) {
+                uint32_t ext_stride = 0;
+                if (rec->extended)
+                        ext_stride = *(uint32_t *)(addr + 100 + i * 4);
+
+                printf("0x%08x:     0x%08x: attr %d addr\n",
+                       paddr + 36 + i * 8,
+                       *(uint32_t *)(addr + 36 + i * 8), i);
+                printf("0x%08x:     0x%04x: attr %d %db, %db stride\n",
+                       paddr + 40 + i * 8,
+                       *(uint16_t *)(addr + 40 + i * 8),
+                       i,
+                       *(uint8_t *)(addr + 40 + i * 8) + 1,
+                       *(uint8_t *)(addr + 41 + i * 8) + ext_stride);
+                printf("0x%08x:     0x%04x: attr %d %2d VS VPM, %2d CS VPM\n",
+                       paddr + 42 + i * 8,
+                       *(uint16_t *)(addr + 42 + i * 8),
+                       i,
+                       *(uint8_t *)(addr + 42 + i * 8),
+                       *(uint8_t *)(addr + 43 + i * 8));
+        }
+
         printf("\n");
 }
 
