@@ -235,6 +235,7 @@ vc4_parse_add_gl_shader_rec(uint32_t paddr, uint8_t attributes, bool extended)
         vc4_init_mem_area(&rec, VC4_MEM_AREA_GL_SHADER_REC, paddr, size);
         rec.attributes = attributes;
         rec.extended = extended;
+        vc4_add_mem_area_to_list(&rec);
 }
 
 void
